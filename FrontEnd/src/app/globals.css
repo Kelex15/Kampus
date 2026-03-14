@@ -1,0 +1,94 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme inline {
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-mono);
+
+    /* ── Surfaces (layered, not flat) ── */
+    --color-background: #f7f7f5;
+    --color-foreground: #0a0a0a;
+    --color-card: #ffffff;
+    --color-card-foreground: #0a0a0a;
+    --color-surface-raised: #ffffff;
+    --color-surface-sunken: #f0efeb;
+    --color-surface-overlay: #ededea;
+
+    /* ── Kampus palette ── */
+    --color-kampus: #CBFF00;
+    --color-kampus-hover: #b8e600;
+    --color-kampus-muted: #eeffaa;
+    --color-kampus-bg: #f8ffe0;
+
+    /* ── Warm neutrals (not blue-gray) ── */
+    --color-ink: #1a1a17;
+    --color-ink-secondary: #4a4a45;
+    --color-ink-tertiary: #7a7a72;
+    --color-ink-faint: #a8a89e;
+    --color-ink-ghost: #c8c8c0;
+
+    /* ── System ── */
+    --color-primary: #1a1a17;
+    --color-primary-foreground: #f7f7f5;
+    --color-secondary: #f0efeb;
+    --color-secondary-foreground: #1a1a17;
+    --color-muted: #f0efeb;
+    --color-muted-foreground: #7a7a72;
+    --color-accent: #f0efeb;
+    --color-accent-foreground: #1a1a17;
+    --color-destructive: #dc2626;
+    --color-border: #e2e1dc;
+    --color-border-strong: #d0cfc8;
+    --color-input: #e2e1dc;
+    --color-ring: #94a3b8;
+
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "ss01", "ss02", "cv01";
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+    html {
+        scroll-behavior: smooth;
+    }
+
+    /* Better default text rendering */
+    h1, h2, h3, h4, h5, h6 {
+        text-wrap: balance;
+    }
+    p {
+        text-wrap: pretty;
+    }
+}
+
+/* Branded selection */
+::selection {
+    background-color: #CBFF00;
+    color: #1a1a17;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #d0cfc8;
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a89e;
+}
