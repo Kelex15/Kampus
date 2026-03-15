@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Kampus – Your academic network</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #050816;
+        --bg-soft: #0b1020;
+        --bg-softer: #111827;
+        --accent: #4f46e5;
+        --accent-soft: #6366f1;
+        --accent-muted: #3730a3;
+        --text: #f9fafb;
+        --text-muted: #9ca3af;
+        --border: #1f2937;
+        --danger: #ef4444;
+        --radius-lg: 18px;
+        --radius-md: 12px;
+        --radius-sm: 999px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text",
+          sans-serif;
+        background: radial-gradient(circle at top, #1f2937 0, #020617 55%, #000 100%);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        padding: 24px 16px;
+      }
+
+      .app-shell {
+        width: 100%;
+        max-width: 1100px;
+        background: linear-gradient(145deg, rgba(15, 23, 42, 0.98), #020617);
+        border-radius: 32px;
+        border: 1px solid rgba(75, 85, 99, 0.35);
+        box-shadow:
+          0 18px 60px rgba(15, 23, 42, 0.8),
+          0 0 0 1px rgba(148, 163, 184, 0.05);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      .app-header {
+        padding: 18px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 1px solid rgba(31, 41, 55, 0.9);
+        backdrop-filter: blur(20px);
+        background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.18), transparent 55%);
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .logo-mark {
+        width: 32px;
+        height: 32px;
+        border-radius: 12px;
+        background: conic-gradient(from 160deg, #4f46e5, #22c55e, #06b6d4, #4f46e5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .logo-mark::after {
+        content: "";
+        position: absolute;
+        inset: 2px;
+        border-radius: 10px;
+        background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.2), #020617);
+      }
+
+      .logo-initial {
+        position: relative;
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: -0.08em;
+      }
+
+      .logo-text-primary {
+        font-weight: 700;
+        letter-spacing: -0.04em;
+        font-size: 20px;
+      }
+
+      .logo-text-sub {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .header-pill {
+        padding: 6px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        font-size: 11px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(15, 23, 42, 0.8);
+      }
+
+      .header-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: #22c55e;
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+      }
+
+      .app-body {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 0;
+        min-height: 520px;
+      }
+
+      @media (max-width: 880px) {
+        .app-shell {
+          border-radius: 24px;
+        }
+
+        .app-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .sidebar {
+        padding: 20px 18px 18px;
+        border-right: 1px solid rgba(31, 41, 55, 0.9);
+        background: radial-gradient(circle at top, rgba(15, 23, 42, 0.9), rgba(2, 6, 23, 0.98));
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .sidebar-section-title {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--text-muted);
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        border: 1px solid rgba(55, 65, 81, 0.7);
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text-muted);
+      }
+
+      .pill-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #4f46e5;
+      }
+
+      .nav-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 6px;
+      }
+
+      .nav-tab {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 999px;
+        font-size: 13px;
+        color: var(--text-muted);
+        border: 1px solid transparent;
+        background: transparent;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+
+      .nav-tab-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(17, 24, 39, 0.9);
+        border: 1px solid rgba(31, 41, 55, 0.9);
+        font-size: 12px;
+      }
+
+      .nav-tab.active {
+        color: #e5e7eb;
+        background: radial-gradient(circle at top left, rgba(79, 70, 229, 0.22), rgba(15, 23, 42, 0.92));
+        border-color: rgba(79, 70, 229, 0.8);
+      }
+
+      .nav-tab-label {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+
+      .nav-tab-title {
+        font-size: 13px;
+      }
+
+      .nav-tab-sub {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .sidebar-divider {
+        height: 1px;
+        background: linear-gradient(to right, transparent, rgba(31, 41, 55, 0.9), transparent);
+        margin: 4px 0;
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .sidebar-footer span {
+        color: var(--accent-soft);
+      }
+
+      .content {
+        padding: 22px 22px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .content-header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .content-title-block {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .content-kicker {
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent-soft);
+      }
+
+      .content-title {
+        font-size: 22px;
+        font-weight: 600;
+        letter-spacing: -0.03em;
+      }
+
+      .content-subtitle {
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+
+      .pill-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .btn-primary {
+        border-radius: var(--radius-sm);
+        border: none;
+        font-size: 13px;
+        padding: 8px 14px;
+        background: linear-gradient(135deg, var(--accent-soft), #22c55e);
+        color: white;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        box-shadow:
+          0 10px 30px rgba(79, 70, 229, 0.4),
+          0 0 0 1px rgba(15, 23, 42, 1);
+      }
+
+      .btn-primary span {
+        font-size: 11px;
+        opacity: 0.9;
+      }
+
+      .btn-ghost {
+        border-radius: var(--radius-sm);
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        font-size: 13px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text-muted);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+
+      .btn-ghost-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: #22c55e;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+        gap: 16px;
+      }
+
+      @media (max-width: 880px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .panel {
+        border-radius: var(--radius-lg);
+        border: 1px solid rgba(31, 41, 55, 0.95);
+        background: radial-gradient(circle at top left, rgba(55, 65, 81, 0.45), rgba(15, 23, 42, 0.96));
+        padding: 14px 14px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.8);
+      }
+
+      .panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .panel-title-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .panel-title {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .panel-sub {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .chip {
+        font-size: 11px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--text-muted);
+      }
+
+      .select-row {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .field-label {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      select,
+      input,
+      textarea {
+        width: 100%;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.95);
+        padding: 8px 12px;
+        font-size: 13px;
+        background: radial-gradient(circle at top left, rgba(31, 41, 55, 0.8), rgba(15, 23, 42, 0.98));
+        color: var(--text);
+        outline: none;
+      }
+
+      textarea {
+        border-radius: 12px;
+        resize: vertical;
+        min-height: 72px;
+      }
+
+      select:focus,
+      input:focus,
+      textarea:focus {
+        border-color: rgba(129, 140, 248, 1);
+        box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.5);
+      }
+
+      .inline-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+        align-items: center;
+      }
+
+      .inline-row .btn-primary {
+        padding-inline: 14px;
+      }
+
+      .hint {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .card {
+        padding: 9px 10px;
+        border-radius: var(--radius-md);
+        border: 1px solid rgba(31, 41, 55, 0.95);
+        background: radial-gradient(circle at top left, rgba(31, 41, 55, 0.9), rgba(15, 23, 42, 0.96));
+        display: flex;
+        gap: 8px;
+      }
+
+      .card-left {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+      }
+
+      .card-title-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .card-title {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .card-meta {
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .badge-soft {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        background: rgba(15, 23, 42, 0.9);
+        color: var(--accent-soft);
+      }
+
+      .tag-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 4px;
+      }
+
+      .tag {
+        font-size: 10px;
+        padding: 3px 7px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        color: var(--text-muted);
+      }
+
+      .scroll-area {
+        max-height: 230px;
+        overflow: auto;
+        padding-right: 4px;
+        scrollbar-width: thin;
+      }
+
+      .scroll-area::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .scroll-area::-webkit-scrollbar-thumb {
+        background: rgba(55, 65, 81, 0.9);
+        border-radius: 999px;
+      }
+
+      .pill-small {
+        font-size: 10px;
+        padding: 3px 7px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.8);
+        color: var(--text-muted);
+      }
+
+      .ml-auto {
+        margin-left: auto;
+      }
+
+      .rating-stars {
+        font-size: 13px;
+        color: #fbbf24;
+      }
+
+      .rating-input-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 6px;
+      }
+
+      .rating-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+        color: var(--accent-soft);
+        background: rgba(15, 23, 42, 0.9);
+      }
+
+      .chat-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      .chat-bubble {
+        padding: 8px 10px;
+        border-radius: 14px;
+        background: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(31, 41, 55, 0.95);
+        font-size: 13px;
+      }
+
+      .chat-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        margin-top: 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .chip-mini {
+        font-size: 10px;
+        padding: 3px 7px;
+        border-radius: 999px;
+        border: 1px solid rgba(55, 65, 81, 0.9);
+      }
+
+      .resources-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+      }
+
+      .resource-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        align-items: center;
+        font-size: 12px;
+        padding: 6px 8px;
+        border-radius: 12px;
+        border: 1px solid rgba(31, 41, 55, 0.95);
+        background: rgba(15, 23, 42, 0.96);
+      }
+
+      .resource-item a {
+        color: #93c5fd;
+        text-decoration: none;
+      }
+
+      .resource-item a:hover {
+        text-decoration: underline;
+      }
+
+      .empty-state {
+        font-size: 12px;
+        color: var(--text-muted);
+        padding: 6px 0 4px;
+      }
+
+      .badge-soft-green {
+        font-size: 11px;
+        padding: 3px 7px;
+        border-radius: 999px;
+        border: 1px solid rgba(34, 197, 94, 0.4);
+        color: #bbf7d0;
+        background: rgba(22, 101, 52, 0.3);
+      }
+
+      .text-danger {
+        color: var(--danger);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="app-header">
+        <div class="logo">
+          <div class="logo-mark">
+            <span class="logo-initial">K</span>
+          </div>
+          <div>
+            <div class="logo-text-primary">Kampus</div>
+            <div class="logo-text-sub">Your academic network</div>
+          </div>
+        </div>
+        <div class="header-pill">
+          <span class="header-dot"></span>
+          <span>MVP – No signup, just explore</span>
+        </div>
+      </header>
+
+      <div class="app-body">
+        <aside class="sidebar">
+          <div>
+            <div class="sidebar-section-title">Navigation</div>
+            <div class="nav-tabs" id="nav-tabs">
+              <button class="nav-tab active" data-view="landing">
+                <span class="nav-tab-icon">◎</span>
+                <span class="nav-tab-label">
+                  <span class="nav-tab-title">Landing</span>
+                  <span class="nav-tab-sub">What Kampus is about</span>
+                </span>
+              </button>
+              <button class="nav-tab" data-view="dashboard">
+                <span class="nav-tab-icon">▤</span>
+                <span class="nav-tab-label">
+                  <span class="nav-tab-title">Dashboard</span>
+                  <span class="nav-tab-sub">Pick university & course</span>
+                </span>
+              </button>
+              <button class="nav-tab" data-view="room">
+                <span class="nav-tab-icon">💬</span>
+                <span class="nav-tab-label">
+                  <span class="nav-tab-title">Course Room</span>
+                  <span class="nav-tab-sub">Chat & share resources</span>
+                </span>
+              </button>
+              <button class="nav-tab" data-view="professors">
+                <span class="nav-tab-icon">⭐</span>
+                <span class="nav-tab-label">
+                  <span class="nav-tab-title">Professors</span>
+                  <span class="nav-tab-sub">Ratings & reviews</span>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-divider"></div>
+
+          <div>
+            <div class="sidebar-section-title">Product thesis</div>
+            <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+              Kampus connects
+              <span style="color: #e5e7eb;">students, courses, professors & resources</span>
+              into one structured academic social graph.
+            </div>
+            <div class="chip-row" style="margin-top: 10px;">
+              <div class="chip">University graph</div>
+              <div class="chip">Course rooms</div>
+              <div class="chip">Professor reputation</div>
+              <div class="chip">Playbook for scaling</div>
+            </div>
+          </div>
+
+          <div class="sidebar-footer">
+            <div>Built as a <span>90‑min MVP</span>.</div>
+            <div>Commercial angle: <span>own the academic network layer</span> before LinkedIn does.</div>
+          </div>
+        </aside>
+
+        <main class="content">
+          <header class="content-header">
+            <div class="content-title-block">
+              <div class="content-kicker" id="view-kicker">Landing</div>
+              <div class="content-title" id="view-title">Welcome to Kampus</div>
+              <div class="content-subtitle" id="view-subtitle">
+                Your single place for university courses, rooms, and professor reviews.
+              </div>
+            </div>
+            <div class="pill-row">
+              <button class="btn-ghost" id="cta-enter-platform">
+                <span class="btn-ghost-dot"></span>
+                Enter platform
+              </button>
+              <button class="btn-primary" id="cta-investor">
+                Deck mode
+                <span>Why this wins</span>
+              </button>
+            </div>
+          </header>
+
+          <section class="layout">
+            <section class="panel" id="panel-left"></section>
+            <section class="panel" id="panel-right"></section>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <script>
+      // ----- Dummy data (local only) -----
+      const db = {
+        schools: [
+          { id: 1, name: "University of Lagos" },
+          { id: 2, name: "University of Ibadan" },
+          { id: 3, name: "Covenant University" },
+        ],
+        courses: [
+          { id: 1, schoolId: 1, code: "CSC 201", name: "Data Structures" },
+          { id: 2, schoolId: 1, code: "EEE 101", name: "Intro to Electrical Engineering" },
+          { id: 3, schoolId: 2, code: "MTH 101", name: "Calculus I" },
+          { id: 4, schoolId: 3, code: "ENT 210", name: "Startup Studio" },
+        ],
+        professors: [
+          {
+            id: 1,
+            schoolId: 1,
+            name: "Dr. Adebayo",
+            courseIds: [1],
+          },
+          {
+            id: 2,
+            schoolId: 1,
+            name: "Engr. Okafor",
+            courseIds: [2],
+          },
+          {
+            id: 3,
+            schoolId: 2,
+            name: "Prof. Bello",
+            courseIds: [3],
+          },
+        ],
+        reviews: [
+          {
+            id: 1,
+            professorId: 1,
+            rating: 5,
+            comment: "Explains complex concepts with real-world stories.",
+          },
+          {
+            id: 2,
+            professorId: 1,
+            rating: 4,
+            comment: "Challenging exams but very fair grading.",
+          },
+          {
+            id: 3,
+            professorId: 2,
+            rating: 3,
+            comment: "Labs are great, lectures can be fast.",
+          },
+        ],
+      };
+
+      let state = {
+        view: "landing",
+        selectedSchoolId: null,
+        selectedCourseId: null,
+        messages: [
+          {
+            id: 1,
+            author: "Ada",
+            text: "Anyone has past questions for CSC 201 midterm?",
+            minutesAgo: 12,
+          },
+          {
+            id: 2,
+            author: "Ifeanyi",
+            text: "Just dropped a Notion doc summarizing all the lectures 📚",
+            minutesAgo: 8,
+          },
+        ],
+        resources: [
+          {
+            id: 1,
+            title: "Notion summary – Weeks 1-4",
+            url: "https://notion.so/example",
+            type: "Notes",
+          },
+          {
+            id: 2,
+            title: "YouTube playlist – Data Structures",
+            url: "https://youtube.com/example",
+            type: "Video",
+          },
+        ],
+      };
+
+      const navTabs = document.getElementById("nav-tabs");
+      const viewKicker = document.getElementById("view-kicker");
+      const viewTitle = document.getElementById("view-title");
+      const viewSubtitle = document.getElementById("view-subtitle");
+      const panelLeft = document.getElementById("panel-left");
+      const panelRight = document.getElementById("panel-right");
+      const enterPlatformBtn = document.getElementById("cta-enter-platform");
+      const investorBtn = document.getElementById("cta-investor");
+
+      function setView(view) {
+        state.view = view;
+        Array.from(navTabs.querySelectorAll(".nav-tab")).forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.view === view);
+        });
+        render();
+      }
+
+      navTabs.addEventListener("click", (e) => {
+        const btn = e.target.closest(".nav-tab");
+        if (!btn) return;
+        setView(btn.dataset.view);
+      });
+
+      enterPlatformBtn.addEventListener("click", () => {
+        setView("dashboard");
+      });
+
+      investorBtn.addEventListener("click", () => {
+        alert(
+          "Deck mode is conceptual here:\n\n• Own the academic graph (students ↔ courses ↔ professors)\n• Start with course rooms, expand to recruitment & alumni\n• Monetize via premium rooms, recruiting, course insights."
+        );
+      });
+
+      function render() {
+        if (state.view === "landing") {
+          viewKicker.textContent = "Landing";
+          viewTitle.textContent = "Your academic network, not another chat app";
+          viewSubtitle.textContent =
+            "Kampus organizes the chaos of WhatsApp groups, Reddit threads and random Google Docs into structured course rooms.";
+          renderLanding();
+        } else if (state.view === "dashboard") {
+          viewKicker.textContent = "Dashboard";
+          viewTitle.textContent = "Pick where you study";
+          viewSubtitle.textContent =
+            "Select your university and course. We turn that into your academic home feed.";
+          renderDashboard();
+        } else if (state.view === "room") {
+          viewKicker.textContent = "Course room";
+          viewTitle.textContent = "Live course space";
+          viewSubtitle.textContent =
+            "A single place for announcements, Q&A, and shared resources for each course.";
+          renderRoom();
+        } else if (state.view === "professors") {
+          viewKicker.textContent = "Professors";
+          viewTitle.textContent = "Reputation that travels with you";
+          viewSubtitle.textContent =
+            "Discover teaching styles, difficulty and student sentiment before you register.";
+          renderProfessors();
+        }
+      }
+
+      function renderLanding() {
+        panelLeft.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">Why Kampus exists</div>
+              <div class="panel-sub">Today: scattered chats. Tomorrow: structured academic graph.</div>
+            </div>
+            <span class="badge-soft-green">Problem → Network → Platform</span>
+          </div>
+          <div class="stack">
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Fragmented student communication</div>
+                  <span class="badge-soft">Today</span>
+                </div>
+                <div class="card-meta">
+                  WhatsApp groups, Telegram, Discord, random Google Drive links.
+                </div>
+                <div class="tag-row">
+                  <span class="tag">No search</span>
+                  <span class="tag">No structure</span>
+                  <span class="tag">Zero memory</span>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Kampus as the academic graph</div>
+                  <span class="badge-soft">Kampus</span>
+                </div>
+                <div class="card-meta">
+                  Every student connects to a <strong>school → course → professor</strong> graph with rooms and resources baked in.
+                </div>
+                <div class="tag-row">
+                  <span class="tag">Course rooms</span>
+                  <span class="tag">Professor ratings</span>
+                  <span class="tag">Resource hubs</span>
+                  <span class="tag">Signals for recruiters</span>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Monetization & scale</div>
+                  <span class="badge-soft">Commercial</span>
+                </div>
+                <div class="card-meta">
+                  Start free for students. Layer in premium rooms, recruiting tools, and insights for universities and employers.
+                </div>
+                <div class="tag-row">
+                  <span class="tag">Premium rooms</span>
+                  <span class="tag">Recruiting</span>
+                  <span class="tag">Analytics</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        panelRight.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">MVP in one glance</div>
+              <div class="panel-sub">Simple, shippable, and extensible.</div>
+            </div>
+            <span class="badge-soft">v0 • Fake data</span>
+          </div>
+          <div class="stack">
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">1. Landing</div>
+                  <span class="pill-small">You are here</span>
+                </div>
+                <div class="card-meta">
+                  Explain Kampus in one screen. One primary CTA: enter dashboard.
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">2. Dashboard</div>
+                  <span class="pill-small">University → Course</span>
+                </div>
+                <div class="card-meta">
+                  Choose university and course from dropdowns. One click to join course room.
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">3. Course Room</div>
+                  <span class="pill-small">Chat + resources</span>
+                </div>
+                <div class="card-meta">
+                  Live chat (fake realtime), shared resources, and professors teaching that course.
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">4. Professor ratings</div>
+                  <span class="pill-small">Social proof</span>
+                </div>
+                <div class="card-meta">
+                  See professor rating averages and short reviews. Submit a quick anonymous review.
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderDashboard() {
+        const schoolOptions = db.schools
+          .map(
+            (s) =>
+              `<option value="\${s.id}" \${s.id === state.selectedSchoolId ? "selected" : ""}>\${s.name}</option>`
+          )
+          .join("");
+
+        const coursesForSchool = db.courses.filter(
+          (c) => c.schoolId === state.selectedSchoolId
+        );
+
+        const courseOptions = coursesForSchool
+          .map(
+            (c) =>
+              `<option value="\${c.id}" \${c.id === state.selectedCourseId ? "selected" : ""}>\${c.code} – \${c.name}</option>`
+          )
+          .join("");
+
+        panelLeft.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">Choose your context</div>
+              <div class="panel-sub">We start with where and what you study.</div>
+            </div>
+            <span class="badge-soft">Step 1 of 2</span>
+          </div>
+          <div class="select-row">
+            <label class="field-label" for="school-select">University</label>
+            <select id="school-select">
+              <option value="">Select a university</option>
+              \${schoolOptions}
+            </select>
+          </div>
+          <div class="select-row">
+            <label class="field-label" for="course-select">Course</label>
+            <select id="course-select" \${!state.selectedSchoolId ? "disabled" : ""}>
+              <option value="">Select a course</option>
+              \${courseOptions}
+            </select>
+          </div>
+          <div class="inline-row">
+            <button class="btn-primary" id="join-room-btn" \${!state.selectedCourseId ? "disabled" : ""}>
+              Join course room
+              <span>CSC-style WhatsApp, but organized.</span>
+            </button>
+            <div class="hint">No account needed – data is fake and local only.</div>
+          </div>
+        `;
+
+        const selectionSummary =
+          state.selectedCourseId &&
+          db.courses.find((c) => c.id === state.selectedCourseId);
+        const school =
+          state.selectedSchoolId &&
+          db.schools.find((s) => s.id === state.selectedSchoolId);
+
+        panelRight.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">What a course room unlocks</div>
+              <div class="panel-sub">
+                One room per course, shared across cohorts and years.
+              </div>
+            </div>
+            <span class="badge-soft">Network effects</span>
+          </div>
+          <div class="stack">
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Live feed</div>
+                  <span class="pill-small">Chat</span>
+                </div>
+                <div class="card-meta">Pinned announcements, questions, quick polls.</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Resource hub</div>
+                  <span class="pill-small">Docs</span>
+                </div>
+                <div class="card-meta">Past questions, summaries, and curated external links.</div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Professor layer</div>
+                  <span class="pill-small">Ratings</span>
+                </div>
+                <div class="card-meta">
+                  See which professors teach this course and how students rate them.
+                </div>
+              </div>
+            </div>
+            ${
+              selectionSummary
+                ? `
+              <div class="card">
+                <div class="card-left">
+                  <div class="card-title-row">
+                    <div class="card-title">You’re about to join</div>
+                    <span class="badge-soft-green">Preview</span>
+                  </div>
+                  <div class="card-meta">
+                    \${selectionSummary.code} – \${selectionSummary.name}
+                    ${
+                      school
+                        ? `<span class="pill-small ml-auto">\${school.name}</span>`
+                        : ""
+                    }
+                  </div>
+                </div>
+              </div>
+            `
+                : `
+              <div class="empty-state">
+                Once you pick a university and course, we’ll preview your course room here.
+              </div>
+            `
+            }
+          </div>
+        `;
+
+        const schoolSelect = document.getElementById("school-select");
+        const courseSelect = document.getElementById("course-select");
+        const joinRoomBtn = document.getElementById("join-room-btn");
+
+        schoolSelect.addEventListener("change", (e) => {
+          const value = e.target.value ? Number(e.target.value) : null;
+          state.selectedSchoolId = value;
+          state.selectedCourseId = null;
+          render();
+        });
+
+        courseSelect.addEventListener("change", (e) => {
+          const value = e.target.value ? Number(e.target.value) : null;
+          state.selectedCourseId = value;
+          render();
+        });
+
+        joinRoomBtn.addEventListener("click", () => {
+          if (!state.selectedCourseId) return;
+          setView("room");
+        });
+      }
+
+      function renderRoom() {
+        const course =
+          state.selectedCourseId &&
+          db.courses.find((c) => c.id === state.selectedCourseId);
+        const school =
+          state.selectedSchoolId &&
+          db.schools.find((s) => s.id === state.selectedSchoolId);
+
+        panelLeft.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">
+                ${
+                  course
+                    ? `\${course.code} • \${course.name}`
+                    : "Join a course room"
+                }
+              </div>
+              <div class="panel-sub">
+                ${
+                  school
+                    ? `\${school.name}`
+                    : "Pick a university + course on the dashboard first."
+                }
+              </div>
+            </div>
+            <span class="badge-soft">Main chat</span>
+          </div>
+          <div class="scroll-area">
+            <div class="chat-list" id="chat-list"></div>
+          </div>
+          <div class="inline-row">
+            <input id="chat-input" placeholder="Drop a quick question or update…" />
+            <button class="btn-primary" id="send-message-btn">Send</button>
+          </div>
+          <div class="hint">
+            This is fake realtime – messages only live in your browser for now.
+          </div>
+        `;
+
+        panelRight.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">Resources & professors</div>
+              <div class="panel-sub">Where the real value compounds.</div>
+            </div>
+            <span class="badge-soft">Side panel</span>
+          </div>
+          <div class="stack">
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Shared resources</div>
+                  <span class="pill-small">Links</span>
+                </div>
+                <div class="resources-list" id="resources-list"></div>
+                <div class="inline-row">
+                  <input id="resource-title-input" placeholder="Title (e.g. Past questions – 2024)" />
+                  <input id="resource-url-input" placeholder="https://link-to-resource" />
+                  <button class="btn-ghost" id="add-resource-btn">Add</button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">Professors teaching this course</div>
+                  <span class="pill-small">Sample data</span>
+                </div>
+                <div class="stack" id="room-professors"></div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        const chatList = document.getElementById("chat-list");
+        const chatInput = document.getElementById("chat-input");
+        const sendBtn = document.getElementById("send-message-btn");
+        const resourcesList = document.getElementById("resources-list");
+        const resTitleInput = document.getElementById("resource-title-input");
+        const resUrlInput = document.getElementById("resource-url-input");
+        const addResourceBtn = document.getElementById("add-resource-btn");
+        const roomProfessors = document.getElementById("room-professors");
+
+        function renderMessages() {
+          chatList.innerHTML = "";
+          state.messages.forEach((m) => {
+            const div = document.createElement("div");
+            div.className = "chat-bubble";
+            div.innerHTML = `
+              <div>\${m.text}</div>
+              <div class="chat-meta">
+                <span>\${m.author}</span>
+                <span class="chip-mini">\${m.minutesAgo} min ago</span>
+              </div>
+            `;
+            chatList.appendChild(div);
+          });
+        }
+
+        function renderResources() {
+          if (!state.resources.length) {
+            resourcesList.innerHTML =
+              '<div class="empty-state">No resources yet – add the first one.</div>';
+            return;
+          }
+          resourcesList.innerHTML = "";
+          state.resources.forEach((r) => {
+            const div = document.createElement("div");
+            div.className = "resource-item";
+            div.innerHTML = `
+              <div>
+                <div>\${r.title}</div>
+                <a href="\${r.url}" target="_blank" rel="noreferrer">\${r.url}</a>
+              </div>
+              <span class="pill-small">\${r.type}</span>
+            `;
+            resourcesList.appendChild(div);
+          });
+        }
+
+        function renderRoomProfessors() {
+          const profs = db.professors.filter((p) =>
+            state.selectedCourseId
+              ? p.courseIds.includes(state.selectedCourseId)
+              : true
+          );
+
+          if (!profs.length) {
+            roomProfessors.innerHTML =
+              '<div class="empty-state">Once professors are linked to this course, they will appear here.</div>';
+            return;
+          }
+
+          roomProfessors.innerHTML = "";
+
+          profs.forEach((p) => {
+            const profReviews = db.reviews.filter((r) => r.professorId === p.id);
+            const avg =
+              profReviews.length === 0
+                ? null
+                : (
+                    profReviews.reduce((acc, r) => acc + r.rating, 0) /
+                    profReviews.length
+                  ).toFixed(1);
+
+            const div = document.createElement("div");
+            div.className = "card";
+            div.innerHTML = `
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">\${p.name}</div>
+                  <span class="rating-stars">
+                    ${
+                      avg
+                        ? "★".repeat(Math.round(Number(avg))) +
+                          "☆".repeat(5 - Math.round(Number(avg)))
+                        : "☆☆☆☆☆"
+                    }
+                  </span>
+                </div>
+                <div class="card-meta">
+                  ${
+                    avg
+                      ? `Average rating: \${avg}/5 (\${profReviews.length} reviews)`
+                      : "No reviews yet"
+                  }
+                </div>
+              </div>
+            `;
+            roomProfessors.appendChild(div);
+          });
+        }
+
+        sendBtn.addEventListener("click", () => {
+          const text = chatInput.value.trim();
+          if (!text) return;
+          state.messages.push({
+            id: Date.now(),
+            author: "You",
+            text,
+            minutesAgo: 0,
+          });
+          chatInput.value = "";
+          renderMessages();
+        });
+
+        chatInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            sendBtn.click();
+          }
+        });
+
+        addResourceBtn.addEventListener("click", () => {
+          const title = resTitleInput.value.trim();
+          const url = resUrlInput.value.trim();
+          if (!title || !url) return;
+          state.resources.push({
+            id: Date.now(),
+            title,
+            url,
+            type: "Link",
+          });
+          resTitleInput.value = "";
+          resUrlInput.value = "";
+          renderResources();
+        });
+
+        renderMessages();
+        renderResources();
+        renderRoomProfessors();
+      }
+
+      function renderProfessors() {
+        panelLeft.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">Professor directory (sample)</div>
+              <div class="panel-sub">
+                Ratings are anonymous, local to your browser, and reset on refresh.
+              </div>
+            </div>
+            <span class="badge-soft">Student insight</span>
+          </div>
+          <div class="scroll-area">
+            <div class="stack" id="professor-list"></div>
+          </div>
+        `;
+
+        panelRight.innerHTML = `
+          <div class="panel-header">
+            <div class="panel-title-wrap">
+              <div class="panel-title">Leave a quick review</div>
+              <div class="panel-sub">2 clicks, 1 sentence. That’s it.</div>
+            </div>
+            <span class="badge-soft-green">Lightweight UX</span>
+          </div>
+          <div class="select-row">
+            <label class="field-label" for="prof-select">Professor</label>
+            <select id="prof-select">
+              <option value="">Choose a professor</option>
+              ${db.professors
+                .map((p) => `<option value="\${p.id}">\${p.name}</option>`)
+                .join("")}
+            </select>
+          </div>
+          <div class="rating-input-row">
+            <label class="field-label" for="rating-input">Rating</label>
+            <input id="rating-input" type="number" min="1" max="5" step="1" value="5" style="width:80px;" />
+            <span class="rating-badge">1–5, where 5 is great</span>
+          </div>
+          <div class="select-row">
+            <label class="field-label" for="review-text">Short review</label>
+            <textarea id="review-text" placeholder="e.g. Very clear slides, tough exams but transparent grading."></textarea>
+          </div>
+          <div class="inline-row">
+            <button class="btn-primary" id="submit-review-btn">Submit review</button>
+            <div class="hint">This doesn’t hit a server – safe to demo live.</div>
+          </div>
+          <div id="review-error" class="hint text-danger"></div>
+        `;
+
+        const profList = document.getElementById("professor-list");
+        const profSelect = document.getElementById("prof-select");
+        const ratingInput = document.getElementById("rating-input");
+        const reviewText = document.getElementById("review-text");
+        const submitBtn = document.getElementById("submit-review-btn");
+        const errorEl = document.getElementById("review-error");
+
+        function renderProfessorCards() {
+          profList.innerHTML = "";
+
+          db.professors.forEach((p) => {
+            const profReviews = db.reviews.filter((r) => r.professorId === p.id);
+            const avg =
+              profReviews.length === 0
+                ? null
+                : (
+                    profReviews.reduce((acc, r) => acc + r.rating, 0) /
+                    profReviews.length
+                  ).toFixed(1);
+
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `
+              <div class="card-left">
+                <div class="card-title-row">
+                  <div class="card-title">\${p.name}</div>
+                  <span class="rating-stars">
+                    ${
+                      avg
+                        ? "★".repeat(Math.round(Number(avg))) +
+                          "☆".repeat(5 - Math.round(Number(avg)))
+                        : "☆☆☆☆☆"
+                    }
+                  </span>
+                </div>
+                <div class="card-meta">
+                  ${
+                    avg
+                      ? `\${avg}/5 from \${profReviews.length} review\${profReviews.length === 1 ? "" : "s"}`
+                      : "No reviews yet – be the first to add one."
+                  }
+                </div>
+                ${
+                  profReviews.length
+                    ? `
+                  <div class="stack" style="margin-top:6px;">
+                    \${profReviews
+                      .slice(-2)
+                      .map(
+                        (r) => `
+                          <div class="chip-row">
+                            <span class="chip-mini">★\${r.rating}</span>
+                            <span style="font-size:11px;">\${r.comment}</span>
+                          </div>
+                        `
+                      )
+                      .join("")}
+                  </div>
+                `
+                    : ""
+                }
+              </div>
+            `;
+            profList.appendChild(card);
+          });
+        }
+
+        submitBtn.addEventListener("click", () => {
+          errorEl.textContent = "";
+          const profId = Number(profSelect.value);
+          const rating = Number(ratingInput.value);
+          const text = reviewText.value.trim();
+
+          if (!profId) {
+            errorEl.textContent = "Please choose a professor.";
+            return;
+          }
+          if (!(rating >= 1 && rating <= 5)) {
+            errorEl.textContent = "Rating must be between 1 and 5.";
+            return;
+          }
+          if (!text) {
+            errorEl.textContent = "Add a short comment – 1 sentence is enough.";
+            return;
+          }
+
+          db.reviews.push({
+            id: Date.now(),
+            professorId: profId,
+            rating,
+            comment: text,
+          });
+          reviewText.value = "";
+          ratingInput.value = "5";
+          renderProfessorCards();
+        });
+
+        renderProfessorCards();
+      }
+
+      render();
+    </script>
+  </body>
+</html>
