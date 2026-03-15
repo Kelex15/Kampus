@@ -259,24 +259,115 @@ export async function clearAllData(): Promise<InsertResult> {
   const client = getAdminClient();
 
   // Delete in FK-safe order (children before parents)
-  const steps: Array<{ table: string; filter: () => Promise<{ error: any }> }> = [
-    { table: "attachments",      filter: () => client.from("attachments").delete().gte("id", 0) },
-    { table: "messages",         filter: () => client.from("messages").delete().gte("id", 0) },
-    { table: "room_members",     filter: () => client.from("room_members").delete().not("joined_at", "is", null).or("joined_at.is.null") },
-    { table: "rooms",            filter: () => client.from("rooms").delete().gte("id", 0) },
-    { table: "reviews",          filter: () => client.from("reviews").delete().gte("id", 0) },
-    { table: "course_professors",filter: () => client.from("course_professors").delete().or("course_id.gte.0,course_id.is.null") },
-    { table: "course_tags",      filter: () => client.from("course_tags").delete().or("course_id.gte.0,course_id.is.null") },
-    { table: "user_tags",        filter: () => client.from("user_tags").delete().or("tag_id.gte.0,tag_id.is.null") },
-    { table: "courses",          filter: () => client.from("courses").delete().gte("id", 0) },
-    { table: "departments",      filter: () => client.from("departments").delete().gte("id", 0) },
-    { table: "faculties",        filter: () => client.from("faculties").delete().gte("id", 0) },
-    { table: "professors",       filter: () => client.from("professors").delete().gte("id", 0) },
-    { table: "schools",          filter: () => client.from("schools").delete().gte("id", 0) },
+  const steps: Array<{ table: string; run: () => Promise<{ error: any }> }> = [
+    {
+      table: "attachments",
+      run: async () => {
+        const { error } = await client.from("attachments").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "messages",
+      run: async () => {
+        const { error } = await client.from("messages").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "room_members",
+      run: async () => {
+        const { error } = await client
+          .from("room_members")
+          .delete()
+          .not("joined_at", "is", null)
+          .or("joined_at.is.null");
+        return { error };
+      },
+    },
+    {
+      table: "rooms",
+      run: async () => {
+        const { error } = await client.from("rooms").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "reviews",
+      run: async () => {
+        const { error } = await client.from("reviews").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "course_professors",
+      run: async () => {
+        const { error } = await client
+          .from("course_professors")
+          .delete()
+          .or("course_id.gte.0,course_id.is.null");
+        return { error };
+      },
+    },
+    {
+      table: "course_tags",
+      run: async () => {
+        const { error } = await client
+          .from("course_tags")
+          .delete()
+          .or("course_id.gte.0,course_id.is.null");
+        return { error };
+      },
+    },
+    {
+      table: "user_tags",
+      run: async () => {
+        const { error } = await client
+          .from("user_tags")
+          .delete()
+          .or("tag_id.gte.0,tag_id.is.null");
+        return { error };
+      },
+    },
+    {
+      table: "courses",
+      run: async () => {
+        const { error } = await client.from("courses").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "departments",
+      run: async () => {
+        const { error } = await client.from("departments").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "faculties",
+      run: async () => {
+        const { error } = await client.from("faculties").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "professors",
+      run: async () => {
+        const { error } = await client.from("professors").delete().gte("id", 0);
+        return { error };
+      },
+    },
+    {
+      table: "schools",
+      run: async () => {
+        const { error } = await client.from("schools").delete().gte("id", 0);
+        return { error };
+      },
+    },
   ];
 
-  for (const { table, filter } of steps) {
-    const { error } = await filter();
+  for (const { table, run } of steps) {
+    const { error } = await run();
     if (error) {
       res.errors.push(`${table}: ${error.message}`);
     } else {
