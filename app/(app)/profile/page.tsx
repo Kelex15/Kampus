@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
@@ -19,19 +19,47 @@ import {
   Star,
   Edit3,
   Loader2,
+  Check,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import PageShell from "@/components/shared/PageShell";
+import { listSchoolsAction, fetchSchoolByIdAction, updateProfileSchoolAction, type School } from "@/app/actions/profile";
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, profile, loading, signOut } = useAuth();
+  const [schools, setSchools] = useState<School[]>([]);
+  const [schoolName, setSchoolName] = useState<string>("—");
+  const [selectedSchoolId, setSelectedSchoolId] = useState<number | null>(null);
+  const [savingSchool, setSavingSchool] = useState(false);
+  const [schoolSaved, setSchoolSaved] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    if (!loading && !user) router.push("/login");
   }, [loading, user, router]);
+
+  useEffect(() => {
+    listSchoolsAction().then(setSchools);
+  }, []);
+
+  useEffect(() => {
+    if (!profile?.school_id) return;
+    setSelectedSchoolId(profile.school_id);
+    fetchSchoolByIdAction(profile.school_id).then((s) => setSchoolName(s?.name ?? "—"));
+  }, [profile?.school_id]);
+
+  async function handleSaveSchool() {
+    if (!user || !selectedSchoolId) return;
+    setSavingSchool(true);
+    const { error } = await updateProfileSchoolAction(user.id, selectedSchoolId);
+    setSavingSchool(false);
+    if (!error) {
+      setSchoolSaved(true);
+      const s = schools.find((s) => s.id === selectedSchoolId);
+      if (s) setSchoolName(s.name);
+      setTimeout(() => setSchoolSaved(false), 2000);
+    }
+  }
 
   async function handleSignOut() {
     await signOut();
@@ -61,7 +89,7 @@ export default function ProfilePage() {
 
   const accountItems = [
     { label: "Email", value: user.email ?? "—", icon: Mail },
-    { label: "University", value: profile?.school_id ? `School #${profile.school_id}` : "—", icon: GraduationCap },
+    { label: "University", value: schoolName, icon: GraduationCap },
     { label: "Year", value: profile?.current_year ? `Year ${profile.current_year}` : "—", icon: Calendar },
     { label: "Username", value: `@${username}`, icon: User },
   ];
@@ -163,6 +191,42 @@ export default function ProfilePage() {
                 })}
               </div>
             </motion.div>
+
+            {/* School picker */}
+            {schools.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.5 }}
+                className="bg-white border-2 border-gray-900 rounded-xl p-5 sm:p-7 shadow-[5px_5px_0px_#16a34a]"
+              >
+                <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-5 flex items-center gap-2">
+                  <div className="w-6 h-6 bg-green-600 rounded-md flex items-center justify-center">
+                    <GraduationCap size={12} className="text-white" />
+                  </div>
+                  Change University
+                </h3>
+                <div className="flex gap-3">
+                  <select
+                    value={selectedSchoolId ?? ""}
+                    onChange={(e) => { setSelectedSchoolId(Number(e.target.value)); setSchoolSaved(false); }}
+                    className="flex-1 px-4 py-3 bg-white border-2 border-gray-900 rounded-xl text-base text-gray-900 font-medium focus:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20 focus-visible:border-green-600 cursor-pointer transition-all"
+                  >
+                    <option value="" disabled>Select your university</option>
+                    {schools.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleSaveSchool}
+                    disabled={savingSchool || selectedSchoolId === profile?.school_id}
+                    className="inline-flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-bold rounded-xl border-2 border-gray-900 hover:shadow-[3px_3px_0px_#16a34a] hover:-translate-x-[1px] hover:-translate-y-[1px] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none disabled:translate-x-0 disabled:translate-y-0 transition-all"
+                  >
+                    {savingSchool ? <Loader2 size={16} className="animate-spin" /> : schoolSaved ? <Check size={16} className="text-green-400" /> : "Save"}
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             {/* Quick Actions */}
             <motion.div

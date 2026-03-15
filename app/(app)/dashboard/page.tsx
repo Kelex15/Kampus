@@ -16,6 +16,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { fetchCourses } from "./actions";
 import type { CourseWithDepartment } from "@/queries/schools";
+import { fetchSchoolByIdAction } from "@/app/actions/profile";
 import PageShell from "@/components/shared/PageShell";
 
 /* ─── Decorative SVG doodles ─── */
@@ -153,19 +154,27 @@ export default function DashboardPage() {
     const [coursesLoading, setCoursesLoading] = useState(true);
     const [coursesError, setCoursesError] = useState(false);
 
-    const { profile, loading: authLoading } = useAuth();
+    const { profile, ready } = useAuth();
+    const [schoolName, setSchoolName] = useState<string | null>(null);
     const greeting = profile?.username || (profile?.first_name as string | null | undefined) || "there";
-    const schoolName = courses.find((c) => c.school_name)?.school_name ?? null;
 
-    // Wait for auth to resolve so we have profile.school_id before fetching.
+    // Fetch school name directly from the schools table — never derive it from
+    // course rows, which can show the wrong school if IDs shifted after a reset.
     useEffect(() => {
-        if (authLoading) return;
+        if (!ready || !profile?.school_id) { setSchoolName(null); return; }
+        fetchSchoolByIdAction(profile.school_id).then((s) => setSchoolName(s?.name ?? null));
+    }, [ready, profile?.school_id]);
+
+    // Wait until both auth AND profile are resolved before fetching — otherwise
+    // profile.school_id is null and the query returns unfiltered results.
+    useEffect(() => {
+        if (!ready) return;
         setCoursesLoading(true);
         fetchCourses(profile?.school_id)
             .then((data) => setCourses(data))
             .catch(() => setCoursesError(true))
             .finally(() => setCoursesLoading(false));
-    }, [authLoading, profile?.school_id]);
+    }, [ready, profile?.school_id]);
 
     const departments = useMemo(() => {
         const deps = new Set(courses.map((c) => c.department_name).filter(Boolean) as string[]);
@@ -253,7 +262,7 @@ export default function DashboardPage() {
 
                             <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight text-gray-900 leading-[1.05]">
                                 {schoolName ? (
-                                    <>{schoolName.split(" ").slice(0, 2).join(" ")}{" "}
+                                    <>{schoolName}{" "}
                                     <span className="relative inline-block">
                                         Courses
                                         <HandDrawnUnderline className="absolute -bottom-1.5 sm:-bottom-2 left-0 w-full h-2.5 sm:h-3.5 text-green-600" />

@@ -88,6 +88,7 @@ export interface Database {
           name: string;
           description: string | null;
           department_id: number | null;
+          school_id: number | null;
           created_at: string | null;
         };
         Insert: {
@@ -96,6 +97,7 @@ export interface Database {
           name: string;
           description?: string | null;
           department_id?: number | null;
+          school_id?: number | null;
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["courses"]["Insert"]>;

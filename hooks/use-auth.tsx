@@ -11,70 +11,41 @@ type AuthContextValue = {
   user: User | null;
   profile: Profile | null;
   loading: boolean;
+  /** True once both auth and profile have resolved. Use this as the fetch gate. */
+  ready: boolean;
   signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-function isAbortError(err: unknown) {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "name" in err &&
-    (err as any).name === "AbortError"
-  );
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     const client = getSupabaseBrowserClient();
     if (!client) {
-      setLoading(false);
+      setAuthLoading(false);
       return;
     }
 
-    let cancelled = false;
-
-    // Resolve the current session once. This avoids depending on
-    // onAuthStateChange's INITIAL_SESSION emission (which can be flaky in dev)
-    // and prevents pages being stuck in loading forever.
-    (async () => {
-      try {
-        const { data: { session } } = await client.auth.getSession();
-        if (cancelled) return;
-        const currentUser = session?.user ?? null;
-        setUser(currentUser);
-        if (!currentUser) setProfile(null);
-      } catch (err) {
-        if (cancelled) return;
-        // Web Lock contention can surface as AbortError; don't crash the app.
-        if (!isAbortError(err)) {
-          console.warn("Auth init failed:", err);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    // Synchronous auth state listener — ZERO browser-side DB calls inside.
-    // onAuthStateChange holds the Web Lock for its entire callback duration.
-    // Any client.from() call inside would try to re-acquire the same lock → abort.
+    // onAuthStateChange fires INITIAL_SESSION synchronously on subscribe with
+    // the current session from cookies — this is the correct replacement for
+    // getSession(). Using both causes concurrent Web Lock acquisitions which
+    // surfaces as "The lock request is aborted" DOMExceptions.
     const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
-      if (cancelled) return;
       const currentUser = session?.user ?? null;
       setUser(currentUser);
-      setLoading(false);
-      if (!currentUser) setProfile(null);
+      setAuthLoading(false);
+      if (!currentUser) {
+        setProfile(null);
+        setProfileLoading(false);
+      }
     });
 
-    return () => {
-      cancelled = true;
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
   // Fetch profile via server action — completely outside the Web Lock context.
@@ -82,15 +53,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    setProfileLoading(true);
     fetchProfileAction(user.id)
       .then((p) => {
         if (cancelled) return;
         setProfile(p);
       })
-      .catch((err) => {
+      .catch(() => {
         if (cancelled) return;
-        console.warn("Failed to fetch profile:", err);
         setProfile(null);
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
       });
     return () => {
       cancelled = true;
@@ -104,20 +78,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setUser(null);
       setProfile(null);
-      setLoading(false);
+      setAuthLoading(false);
+      setProfileLoading(false);
     }
   }, []);
 
-  const value = useMemo<AuthContextValue>(() => ({ user, profile, loading, signOut }), [user, profile, loading, signOut]);
+  // ready = auth resolved AND profile resolved (or no user logged in)
+  const ready = !authLoading && !profileLoading;
+
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, profile, loading: authLoading, ready, signOut }),
+    [user, profile, authLoading, ready, signOut]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
-  if (!ctx) {
-    throw new Error("useAuth must be used within <AuthProvider>");
-  }
-
+  if (!ctx) throw new Error("useAuth must be used within <AuthProvider>");
   return ctx;
 }

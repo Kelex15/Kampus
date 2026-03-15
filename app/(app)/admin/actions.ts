@@ -213,11 +213,29 @@ export async function importCourses(rows: unknown[]): Promise<InsertResult> {
   const res: InsertResult = { label: "Courses", inserted: 0, warnings: [], errors: [] };
   const client = getAdminClient();
 
-  const { data: allDepts } = await client.from("departments").select("id, name");
+  const { data: allDepts } = await client.from("departments").select("id, name, faculty_id");
   const deptMap: Record<string, number> = {};
   for (const d of allDepts ?? []) deptMap[d.name.toLowerCase()] = d.id;
 
-  const toInsert: { course_code: string; name: string; description: string | null; department_id: number | null }[] = [];
+  // dept_id → school_id via faculties
+  const deptToSchool: Record<number, number> = {};
+  const facultyIds = [...new Set((allDepts ?? []).map((d) => d.faculty_id).filter(Boolean) as number[])];
+  if (facultyIds.length > 0) {
+    const { data: allFaculties } = await client.from("faculties").select("id, school_id").in("id", facultyIds);
+    for (const f of allFaculties ?? []) {
+      if (f.school_id) {
+        for (const d of allDepts ?? []) {
+          if (d.faculty_id === f.id) deptToSchool[d.id] = f.school_id;
+        }
+      }
+    }
+  }
+
+  // school website slug → school_id (for universityId field)
+  const { data: allSchools } = await client.from("schools").select("id, website");
+  const schoolSlugMap = buildSchoolMap(allSchools ?? []);
+
+  const toInsert: { course_code: string; name: string; description: string | null; department_id: number | null; school_id: number | null }[] = [];
   for (const row of rows) {
     if (!row || typeof row !== "object") { res.errors.push("Skipped non-object entry"); continue; }
     const c = row as Record<string, unknown>;
@@ -229,12 +247,17 @@ export async function importCourses(rows: unknown[]): Promise<InsertResult> {
     let department_id: number | null = (c.department_id as number | undefined) ?? null;
     const deptHint = c.department as string | undefined;
     if (!department_id && deptHint) {
-      // Try hint first, then fall back to the course title
       department_id = matchDept(deptHint, deptMap) ?? matchDept(name, deptMap) ?? null;
       if (!department_id) res.warnings.push(`"${course_code}": department "${deptHint}" not found — imported without department`);
     }
 
-    toInsert.push({ course_code, name, description: (c.description as string | null) ?? null, department_id });
+    // Resolve school_id: explicit field > universityId slug > derived from department
+    let school_id: number | null = (c.school_id as number | undefined) ?? null;
+    const universityId = c.universityId as string | undefined;
+    if (!school_id && universityId) school_id = schoolSlugMap[universityId.toLowerCase()] ?? null;
+    if (!school_id && department_id) school_id = deptToSchool[department_id] ?? null;
+
+    toInsert.push({ course_code, name, description: (c.description as string | null) ?? null, department_id, school_id });
   }
 
   if (toInsert.length === 0) return res;
