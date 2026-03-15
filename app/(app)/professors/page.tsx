@@ -1,14 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useProfessors } from "@/hooks/use-professors";
+import { useProfessors, type Review } from "@/hooks/use-professors";
+import { submitReviewAction } from "./actions";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function ProfessorsPage() {
-  const { professors, reviews, loading } = useProfessors();
+  const { professors, reviews, setReviews, loading } = useProfessors();
+  const { user } = useAuth();
   const [professorId, setProfessorId] = useState<number | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const computed = useMemo(() => {
     return professors.map((p) => {
@@ -17,42 +21,34 @@ export default function ProfessorsPage() {
         return { professor: p, avg: null as number | null, count: 0, lastTwo: [] as Review[] };
       }
       const avg = reps.reduce((sum, r) => sum + r.rating, 0) / reps.length;
-      return {
-        professor: p,
-        avg,
-        count: reps.length,
-        lastTwo: reps.slice(-2)
-      };
+      return { professor: p, avg, count: reps.length, lastTwo: reps.slice(-2) };
     });
-  }, [reviews]);
+  }, [professors, reviews]);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     setError("");
-    if (!professorId) {
-      setError("Choose a professor.");
-      return;
-    }
-    if (rating < 1 || rating > 5) {
-      setError("Rating must be between 1 and 5.");
-      return;
-    }
-    if (!comment.trim()) {
-      setError("Add a short comment.");
-      return;
-    }
-    // Locally append the new review so the UI updates immediately.
-    // In a real build we would also call a Supabase insert mutation here.
-    reviews.push({
-      id: Date.now(),
-      professor_id: professorId,
+    if (!professorId) { setError("Choose a professor."); return; }
+    if (rating < 1 || rating > 5) { setError("Rating must be between 1 and 5."); return; }
+    if (!comment.trim()) { setError("Add a short comment."); return; }
+
+    setSubmitting(true);
+    const { data, error: submitError } = await submitReviewAction(
+      professorId,
       rating,
-      comment: comment.trim(),
-      author_id: null,
-      created_at: null,
-      updated_at: null
-    });
+      comment.trim(),
+      user?.id ?? null
+    );
+    setSubmitting(false);
+
+    if (submitError || !data) {
+      setError(submitError ?? "Failed to submit review.");
+      return;
+    }
+
+    setReviews((prev) => [...prev, data]);
     setComment("");
     setRating(5);
+    setProfessorId(null);
   }
 
   return (
@@ -65,18 +61,13 @@ export default function ProfessorsPage() {
           <h1 className="text-xl font-semibold tracking-tight text-slate-50 md:text-2xl">
             Reputation that travels with you
           </h1>
-          <p className="text-xs text-slate-400">
-            Ratings below are loaded from Supabase when configured, otherwise from safe local
-            sample data.
-          </p>
         </header>
 
         <div className="space-y-2 text-sm">
           {loading && (
             <p className="text-xs text-slate-500">Loading professors and reviews…</p>
           )}
-          {!loading &&
-            computed.map(({ professor, avg, count, lastTwo }) => (
+          {!loading && computed.map(({ professor, avg, count, lastTwo }) => (
             <article
               key={professor.id}
               className="rounded-xl border border-slate-800 bg-slate-900/90 p-3 text-xs"
@@ -87,19 +78,14 @@ export default function ProfessorsPage() {
                 </div>
                 <div className="text-[11px] text-amber-300">
                   {avg !== null ? (
-                    <>
-                      {"★".repeat(Math.round(avg))}
-                      {"☆".repeat(5 - Math.round(avg))}
-                    </>
-                  ) : (
-                    "☆☆☆☆☆"
-                  )}
+                    <>{"★".repeat(Math.round(avg))}{"☆".repeat(5 - Math.round(avg))}</>
+                  ) : "☆☆☆☆☆"}
                 </div>
               </div>
               <p className="mt-1 text-[11px] text-slate-400">
                 {avg !== null
                   ? `${avg.toFixed(1)}/5 from ${count} review${count === 1 ? "" : "s"}`
-                  : "No reviews yet – be the first to add one."}
+                  : "No reviews yet — be the first."}
               </p>
               {lastTwo.length > 0 && (
                 <div className="mt-2 space-y-1">
@@ -115,23 +101,21 @@ export default function ProfessorsPage() {
               )}
             </article>
           ))}
+          {!loading && professors.length === 0 && (
+            <p className="text-xs text-slate-500">No professors found.</p>
+          )}
         </div>
       </section>
 
       <section className="w-full max-w-sm space-y-3 rounded-2xl border border-slate-800 bg-slate-950/90 p-4 text-sm text-slate-200">
         <header className="space-y-1">
           <div className="text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
-            Leave a quick review
+            Leave a review
           </div>
-          <p className="text-[11px] text-slate-500">
-            2 clicks, 1 sentence. In production this would be tied to your Supabase profile.
-          </p>
         </header>
         <div className="space-y-2">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-300" htmlFor="prof">
-              Professor
-            </label>
+            <label className="block text-xs font-medium text-slate-300" htmlFor="prof">Professor</label>
             <select
               id="prof"
               className="w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100"
@@ -148,9 +132,7 @@ export default function ProfessorsPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="space-y-1">
-              <label className="block text-xs font-medium text-slate-300" htmlFor="rating">
-                Rating
-              </label>
+              <label className="block text-xs font-medium text-slate-300" htmlFor="rating">Rating</label>
               <input
                 id="rating"
                 type="number"
@@ -166,9 +148,7 @@ export default function ProfessorsPage() {
             </span>
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-slate-300" htmlFor="comment">
-              Short review
-            </label>
+            <label className="block text-xs font-medium text-slate-300" htmlFor="comment">Review</label>
             <textarea
               id="comment"
               className="h-24 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs text-slate-100"
@@ -180,17 +160,13 @@ export default function ProfessorsPage() {
         </div>
         {error && <p className="text-[11px] text-rose-400">{error}</p>}
         <button
-          className="mt-1 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 px-4 py-1.5 text-xs font-medium text-slate-950 shadow-lg shadow-indigo-500/40"
+          className="mt-1 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-emerald-400 px-4 py-1.5 text-xs font-medium text-slate-950 shadow-lg shadow-indigo-500/40 disabled:opacity-50"
           onClick={handleSubmit}
+          disabled={submitting}
         >
-          Submit review
+          {submitting ? "Submitting…" : "Submit review"}
         </button>
-        <p className="text-[11px] text-slate-500">
-          In the real app this would insert into a `reviews` table keyed by `professor_id` and
-          your Supabase `profiles.id`.
-        </p>
       </section>
     </div>
   );
 }
-

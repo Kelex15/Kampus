@@ -23,6 +23,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["schools"]["Insert"]>;
+        Relationships: [];
       };
       faculties: {
         Row: {
@@ -38,6 +39,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["faculties"]["Insert"]>;
+        Relationships: [];
       };
       departments: {
         Row: {
@@ -53,6 +55,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["departments"]["Insert"]>;
+        Relationships: [];
       };
       professors: {
         Row: {
@@ -76,6 +79,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["professors"]["Insert"]>;
+        Relationships: [];
       };
       courses: {
         Row: {
@@ -95,6 +99,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["courses"]["Insert"]>;
+        Relationships: [];
       };
       course_professors: {
         Row: {
@@ -106,6 +111,7 @@ export interface Database {
           professor_id?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["course_professors"]["Insert"]>;
+        Relationships: [];
       };
       tags: {
         Row: {
@@ -117,6 +123,7 @@ export interface Database {
           name: string;
         };
         Update: Partial<Database["public"]["Tables"]["tags"]["Insert"]>;
+        Relationships: [];
       };
       course_tags: {
         Row: {
@@ -128,6 +135,7 @@ export interface Database {
           tag_id?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["course_tags"]["Insert"]>;
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -157,6 +165,7 @@ export interface Database {
           updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["profiles"]["Insert"]>;
+        Relationships: [];
       };
       user_tags: {
         Row: {
@@ -168,6 +177,7 @@ export interface Database {
           tag_id?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["user_tags"]["Insert"]>;
+        Relationships: [];
       };
       rooms: {
         Row: {
@@ -189,6 +199,7 @@ export interface Database {
           updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["rooms"]["Insert"]>;
+        Relationships: [];
       };
       room_members: {
         Row: {
@@ -204,6 +215,7 @@ export interface Database {
           joined_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["room_members"]["Insert"]>;
+        Relationships: [];
       };
       access_codes: {
         Row: {
@@ -225,6 +237,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["access_codes"]["Insert"]>;
+        Relationships: [];
       };
       messages: {
         Row: {
@@ -248,6 +261,7 @@ export interface Database {
           updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["messages"]["Insert"]>;
+        Relationships: [];
       };
       attachments: {
         Row: {
@@ -277,6 +291,7 @@ export interface Database {
           created_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["attachments"]["Insert"]>;
+        Relationships: [];
       };
       reviews: {
         Row: {
@@ -298,6 +313,7 @@ export interface Database {
           updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["reviews"]["Insert"]>;
+        Relationships: [];
       };
     };
     Views: {
@@ -311,4 +327,3 @@ export interface Database {
     };
   };
 }
-

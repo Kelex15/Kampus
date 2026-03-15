@@ -218,7 +218,7 @@ export default function AuthForm({ initialMode = "login" }: AuthFormProps) {
                         first_name: firstName || null,
                         last_name: lastName || null,
                         current_year: currentYear ? Number(currentYear) : null,
-                        school_id: schoolId !== "" ? Number(schoolId) : null,
+                        school_id: typeof schoolId === "number" ? schoolId : null,
                         role: "user",
                         type: "student",
                     });

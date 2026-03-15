@@ -23,6 +23,8 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+FrontEnd/
+
 # Editor
 .vscode/
 .idea/

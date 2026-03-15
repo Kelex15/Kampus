@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import {
     MessageSquare,
     BarChart3,
@@ -8,31 +9,34 @@ import {
     FileText,
     Users,
     Send,
-    Paperclip,
-    Smile,
     BookOpen,
     Plus,
-    Search,
     Bell,
     X,
-    CheckCircle,
-    Clock,
-    TrendingUp,
-    AlertCircle,
     Star,
     Download,
-    MessageCircle,
+    Link2,
+    Paperclip,
     ChevronLeft,
     Settings,
     ArrowUpRight,
     Sparkles,
     Zap,
+    Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { previewMessages, fullMessages } from "@/lib/data";
-import type { Course } from "@/lib/types";
+import type { CourseWithDepartment } from "@/queries/schools";
 import { useMessages } from "@/hooks/use-messages";
+import { fetchReviewsAction } from "@/app/(app)/professors/actions";
+import {
+    useResources,
+    isUrl,
+    isValidFile,
+    formatBytes,
+    getFileEmoji,
+    ACCEPTED_FILE_TYPES,
+} from "@/hooks/use-resources";
 
 /* ─── Decorative elements ─── */
 
@@ -120,8 +124,7 @@ function GridPattern({ className }: { className?: string }) {
 
 /* ─── Types ─── */
 
-type Props = { course: Course; joined: boolean };
-type UserType = "all" | "current" | "alumni" | "prospective";
+type Props = { course: CourseWithDepartment | null; slug: string; joined: boolean; roomId?: number };
 type Tab =
     | "discussion"
     | "course-intel"
@@ -137,13 +140,6 @@ const tabs: { id: Tab; label: string; icon: any; emoji: string }[] = [
     { id: "sessions", label: "Sessions", icon: Users, emoji: "📅" },
 ];
 
-const userTypeFilters: { value: UserType; label: string }[] = [
-    { value: "all", label: "All" },
-    { value: "current", label: "Current" },
-    { value: "alumni", label: "Alumni" },
-    { value: "prospective", label: "Prospective" },
-];
-
 const onlineUsers = [
     { id: 1, name: "Sarah Chen", initials: "SC", status: "online" as const },
     { id: 2, name: "Alex Kim", initials: "AK", status: "online" as const },
@@ -155,52 +151,23 @@ const onlineUsers = [
    MAIN COURSE SHELL
 ═══════════════════════════════════ */
 
-export default function CourseShell({ course, joined }: Props) {
+export default function CourseShell({ course, slug, joined, roomId: roomIdProp }: Props) {
     const [activeTab, setActiveTab] = useState<Tab>("discussion");
-    const [userType, setUserType] = useState<UserType>("all");
     const [composer, setComposer] = useState("");
-    const [showChat, setShowChat] = useState(true);
     const [hasJoined, setHasJoined] = useState(joined);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebar, setMobileSidebar] = useState(false);
 
-    const [chatMessage, setChatMessage] = useState("");
-    const chatEndRef = useRef<HTMLDivElement | null>(null);
+    const { user, profile } = useAuth();
+    const roomId = roomIdProp ?? 1;
+    const { messages, sendMessage } = useMessages(roomId);
 
-    const roomId = Number(course.id) || 1;
-    const { messages: chatMessages, sendMessage } = useMessages(roomId);
+    const currentUserLabel = profile?.username ?? user?.email?.split("@")[0] ?? "You";
 
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [chatMessages]);
-
-    const handleSendChat = () => {
-        if (!chatMessage.trim()) return;
-        sendMessage(chatMessage.trim());
-        setChatMessage("");
-    };
-
-    const discussionMessages = useMemo(
-        () =>
-            (hasJoined ? fullMessages : previewMessages).filter(
-                (m) => userType === "all" || m.userType === userType
-            ),
-        [hasJoined, userType]
-    );
-
-    const getUserTypeBadge = (type: string) => {
-        switch (type) {
-            case "current":
-                return "bg-gray-100 text-gray-700 border-2 border-gray-300";
-            case "alumni":
-                return "bg-gray-900 text-green-500 border-2 border-gray-900";
-            case "prospective":
-                return "bg-green-50 text-green-700 border-2 border-green-600";
-            case "instructor":
-                return "bg-green-600 text-white border-2 border-green-700";
-            default:
-                return "bg-gray-100 text-gray-600 border-2 border-gray-300";
-        }
+    const handleSend = () => {
+        if (!composer.trim()) return;
+        sendMessage(composer.trim(), user?.id ?? null);
+        setComposer("");
     };
 
     return (
@@ -281,103 +248,21 @@ export default function CourseShell({ course, joined }: Props) {
                     <>
                         {/* Course Info */}
                         <div className="p-4 sm:p-5 border-b-2 border-dashed border-gray-200">
-                            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                                {course.department}
-                            </span>
+                            {course?.department_name && (
+                                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
+                                    {course.department_name}
+                                </span>
+                            )}
                             <h2 className="text-xl font-black text-gray-900 mt-2 tracking-tight">
-                                {course.code}
+                                {course?.course_code ?? slug}
                             </h2>
                             <p className="text-sm text-gray-500 mt-1 leading-relaxed font-medium">
-                                {course.name}
+                                {course?.name ?? slug}
                             </p>
-
-                            <div className="mt-5 space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-400 font-bold">
-                                        Professor
-                                    </span>
-                                    <span className="font-black text-gray-900 text-sm">
-                                        {course.professor}
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-sm text-gray-400 font-bold">
-                                        Difficulty
-                                    </span>
-                                    <div className="flex gap-1">
-                                        {[...Array(5)].map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className={`w-3 h-3 rounded-sm border-2 ${
-                                                    i < course.difficulty
-                                                        ? "bg-green-600 border-green-700"
-                                                        : "bg-gray-100 border-gray-200"
-                                                }`}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
                         </div>
 
                         {/* Community */}
                         <div className="p-4 sm:p-5 flex-1 overflow-y-auto">
-                            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
-                                Community
-                            </span>
-                            <div className="mt-3 space-y-2">
-                                {[
-                                    {
-                                        icon: Users,
-                                        label: "Current",
-                                        value: course.currentStudents,
-                                        bg: "bg-green-600",
-                                        iconColor: "text-white",
-                                    },
-                                    {
-                                        icon: GraduationCap,
-                                        label: "Alumni",
-                                        value: course.alumni,
-                                        bg: "bg-gray-900",
-                                        iconColor: "text-green-500",
-                                    },
-                                    {
-                                        icon: TrendingUp,
-                                        label: "Prospective",
-                                        value: course.prospective,
-                                        bg: "bg-green-50 border-2 border-green-600",
-                                        iconColor: "text-green-600",
-                                    },
-                                ].map((s) => {
-                                    const Icon = s.icon;
-                                    return (
-                                        <div
-                                            key={s.label}
-                                            className="flex items-center justify-between text-sm group hover:bg-green-50 rounded-lg px-3 py-2.5 -mx-1 transition-all"
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <div
-                                                    className={`w-8 h-8 ${s.bg} rounded-lg flex items-center justify-center`}
-                                                >
-                                                    <Icon
-                                                        size={14}
-                                                        className={
-                                                            s.iconColor
-                                                        }
-                                                    />
-                                                </div>
-                                                <span className="text-gray-500 text-sm font-bold">
-                                                    {s.label}
-                                                </span>
-                                            </div>
-                                            <span className="font-black text-gray-900 text-sm tabular-nums">
-                                                {s.value}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
                             {/* Online users */}
                             <div className="mt-6">
                                 <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
@@ -477,20 +362,10 @@ export default function CourseShell({ course, joined }: Props) {
                                     <Bell size={16} />
                                 </button>
                                 <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-green-600 border-2 border-gray-900 flex items-center justify-center text-xs font-black text-white">
-                                    SC
+                                    {currentUserLabel.slice(0, 2).toUpperCase()}
                                 </div>
                             </div>
                         )}
-                        <button
-                            onClick={() => setShowChat(!showChat)}
-                            className={`p-2 rounded-lg transition-all border-2 ${
-                                showChat
-                                    ? "bg-green-600 text-white border-green-600 shadow-[2px_2px_0px_#111827]"
-                                    : "text-gray-400 hover:text-gray-900 border-transparent hover:border-gray-900"
-                            }`}
-                        >
-                            <MessageCircle size={16} />
-                        </button>
                     </div>
                 </header>
 
@@ -508,14 +383,13 @@ export default function CourseShell({ course, joined }: Props) {
                                 className="h-full relative"
                             >
                                 <DiscussionTab
-                                    messages={discussionMessages}
+                                    messages={messages}
+                                    currentUserId={user?.id ?? null}
                                     composer={composer}
                                     setComposer={setComposer}
-                                    userType={userType}
-                                    setUserType={setUserType}
+                                    onSend={handleSend}
                                     hasJoined={hasJoined}
                                     setHasJoined={setHasJoined}
-                                    getUserTypeBadge={getUserTypeBadge}
                                 />
                             </motion.div>
                         )}
@@ -527,7 +401,7 @@ export default function CourseShell({ course, joined }: Props) {
                                 exit={{ opacity: 0 }}
                                 className="relative"
                             >
-                                <CourseIntelTab course={course} />
+                                <CourseIntelTab course={course} roomId={roomId} />
                             </motion.div>
                         )}
                         {activeTab === "mentorship" && (
@@ -538,7 +412,7 @@ export default function CourseShell({ course, joined }: Props) {
                                 exit={{ opacity: 0 }}
                                 className="relative"
                             >
-                                <MentorshipTab course={course} />
+                                <MentorshipTab />
                             </motion.div>
                         )}
                         {activeTab === "resources" && (
@@ -549,7 +423,7 @@ export default function CourseShell({ course, joined }: Props) {
                                 exit={{ opacity: 0 }}
                                 className="relative"
                             >
-                                <ResourcesTab />
+                                <ResourcesTab roomId={roomId} currentUserId={user?.id ?? null} />
                             </motion.div>
                         )}
                         {activeTab === "sessions" && (
@@ -567,38 +441,6 @@ export default function CourseShell({ course, joined }: Props) {
                 </div>
             </main>
 
-            {/* ═══ Live Chat Sidebar ═══ */}
-            <AnimatePresence>
-                {showChat && (
-                    <motion.aside
-                        initial={{ width: 0, opacity: 0 }}
-                        animate={{ width: 340, opacity: 1 }}
-                        exit={{ width: 0, opacity: 0 }}
-                        transition={{
-                            duration: 0.3,
-                            ease: [0.25, 0.46, 0.45, 0.94],
-                        }}
-                        className="flex-shrink-0 hidden xl:block"
-                    >
-                        <ChatSidebar
-                            chatMessages={chatMessages.map((m) => ({
-                                id: m.id,
-                                user: m.author_id ?? "Anonymous",
-                                message: m.text,
-                                timestamp: new Date(m.created_at ?? "").toLocaleTimeString("en-US", {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                }),
-                            }))}
-                            chatMessage={chatMessage}
-                            setChatMessage={setChatMessage}
-                            handleSendChat={handleSendChat}
-                            chatEndRef={chatEndRef}
-                            onClose={() => setShowChat(false)}
-                        />
-                    </motion.aside>
-                )}
-            </AnimatePresence>
         </div>
     );
 }
@@ -607,15 +449,20 @@ export default function CourseShell({ course, joined }: Props) {
    DISCUSSION TAB
 ═══════════════════════════════════ */
 function DiscussionTab({
-                           messages,
-                           composer,
-                           setComposer,
-                           userType,
-                           setUserType,
-                           hasJoined,
-                           setHasJoined,
-                           getUserTypeBadge,
-                       }: any) {
+    messages,
+    currentUserId,
+    composer,
+    setComposer,
+    onSend,
+    hasJoined,
+    setHasJoined,
+}: any) {
+    const bottomRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages]);
+
     if (!hasJoined) {
         return (
             <div className="h-full flex flex-col items-center justify-center p-6 sm:p-8 text-center relative">
@@ -632,10 +479,7 @@ function DiscussionTab({
                     <div className="bg-white border-2 border-gray-900 rounded-xl p-7 sm:p-10 shadow-[6px_6px_0px_#16a34a]">
                         <div className="relative inline-block mb-6">
                             <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-50 border-2 border-gray-900 rounded-xl flex items-center justify-center shadow-[3px_3px_0px_#16a34a]">
-                                <Sparkles
-                                    className="text-green-600"
-                                    size={28}
-                                />
+                                <Sparkles className="text-green-600" size={28} />
                             </div>
                             <DoodleStar className="absolute -top-2 -right-2 w-5 h-5 text-green-600/50 rotate-12" />
                         </div>
@@ -644,9 +488,8 @@ function DiscussionTab({
                             Unlock the full room
                         </h3>
                         <p className="text-gray-500 text-base font-medium leading-relaxed mb-8">
-                            Join this course room to see all messages,
-                            participate in live chat, access shared resources,
-                            and connect with alumni mentors.
+                            Join this course room to see all messages, share
+                            resources, and connect with alumni mentors.
                         </p>
 
                         <div className="border-t-2 border-dashed border-gray-200 mb-8" />
@@ -658,9 +501,6 @@ function DiscussionTab({
                             >
                                 Join Course Room
                             </button>
-                            <button className="w-full px-7 py-4 bg-white text-gray-900 text-base font-bold rounded-xl border-2 border-gray-900 hover:shadow-[4px_4px_0px_#16a34a] hover:-translate-x-[2px] hover:-translate-y-[2px] transition-all">
-                                View as guest
-                            </button>
                         </div>
                     </div>
                 </motion.div>
@@ -670,84 +510,53 @@ function DiscussionTab({
 
     return (
         <div className="flex flex-col h-full relative">
-            {/* Filter Bar */}
-            <div className="px-4 sm:px-6 py-3 border-b-2 border-dashed border-gray-200 bg-white/90 backdrop-blur-xl flex items-center justify-between sticky top-0 z-10">
-                <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar">
-                    {userTypeFilters.map((f) => (
-                        <button
-                            key={f.value}
-                            onClick={() => setUserType(f.value)}
-                            className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all duration-200 border-2 whitespace-nowrap ${
-                                userType === f.value
-                                    ? "bg-gray-900 text-white border-gray-900 shadow-[2px_2px_0px_#16a34a]"
-                                    : "text-gray-400 hover:text-gray-900 border-transparent hover:border-gray-900"
-                            }`}
-                        >
-                            {f.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 relative">
-                {messages.map((msg: any, i: number) => (
-                    <motion.div
-                        key={msg.id}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.04, duration: 0.35 }}
-                    >
-                        <div className="bg-white rounded-xl p-4 sm:p-5 border-2 border-gray-900 hover:shadow-[4px_4px_0px_#16a34a] hover:-translate-x-[1px] hover:-translate-y-[1px] transition-all duration-200 group">
-                            <div className="flex gap-3 sm:gap-4">
-                                <div className="w-10 h-10 sm:w-11 sm:h-11 bg-gray-100 border-2 border-gray-900 rounded-lg flex items-center justify-center text-lg flex-shrink-0">
-                                    {msg.avatar}
+                {messages.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                        <div className="w-14 h-14 bg-green-50 border-2 border-gray-900 rounded-xl flex items-center justify-center mb-4 shadow-[3px_3px_0px_#16a34a]">
+                            <MessageSquare size={22} className="text-green-600" />
+                        </div>
+                        <p className="text-base font-black text-gray-900 mb-1">No messages yet</p>
+                        <p className="text-sm text-gray-400 font-medium">Be the first to start the conversation.</p>
+                    </div>
+                )}
+                {messages.map((msg: any, i: number) => {
+                    const isOwn = msg.author_id === currentUserId;
+                    const label = isOwn ? "You" : "Member";
+                    const initials = label.slice(0, 2).toUpperCase();
+                    const timestamp = new Date(msg.created_at ?? "").toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                    });
+                    return (
+                        <motion.div
+                            key={msg.id}
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(i * 0.04, 0.3), duration: 0.3 }}
+                            className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}
+                        >
+                            <div className="w-9 h-9 bg-gray-100 border-2 border-gray-900 rounded-lg flex items-center justify-center text-xs font-black text-gray-600 flex-shrink-0">
+                                {initials}
+                            </div>
+                            <div className={`flex flex-col max-w-[75%] ${isOwn ? "items-end" : "items-start"}`}>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-black text-gray-500">{label}</span>
+                                    <span className="text-[10px] text-gray-300 font-bold">{timestamp}</span>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                                        <span className="font-black text-gray-900 text-sm sm:text-base">
-                                            {msg.user}
-                                        </span>
-                                        <span
-                                            className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${getUserTypeBadge(
-                                                msg.userType
-                                            )}`}
-                                        >
-                                            {msg.year}
-                                        </span>
-                                        <span className="text-xs text-gray-300 font-bold ml-auto">
-                                            {msg.timestamp}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-3 font-medium">
-                                        {msg.message}
-                                    </p>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                        {msg.reactions.map(
-                                            (r: any, idx: number) => (
-                                                <button
-                                                    key={idx}
-                                                    className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-50 rounded-lg text-xs hover:bg-green-50 transition-colors border-2 border-transparent hover:border-green-600 font-bold"
-                                                >
-                                                    <span>{r.emoji}</span>
-                                                    <span className="text-gray-400 tabular-nums">
-                                                        {r.count}
-                                                    </span>
-                                                </button>
-                                            )
-                                        )}
-                                        <button className="p-1.5 rounded-lg hover:bg-green-50 transition-colors opacity-0 group-hover:opacity-100 border-2 border-transparent hover:border-green-600">
-                                            <Smile
-                                                size={14}
-                                                className="text-gray-300"
-                                            />
-                                        </button>
-                                    </div>
+                                <div className={`px-4 py-2.5 rounded-xl text-sm font-medium border-2 ${
+                                    isOwn
+                                        ? "bg-green-600 text-white border-green-700 rounded-tr-sm"
+                                        : "bg-white text-gray-900 border-gray-900 rounded-tl-sm shadow-[2px_2px_0px_#16a34a]"
+                                }`}>
+                                    {msg.text}
                                 </div>
                             </div>
-                        </div>
-                    </motion.div>
-                ))}
+                        </motion.div>
+                    );
+                })}
+                <div ref={bottomRef} />
             </div>
 
             {/* Composer */}
@@ -758,19 +567,15 @@ function DiscussionTab({
                             type="text"
                             value={composer}
                             onChange={(e) => setComposer(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && onSend()}
                             placeholder="Share insights, ask questions…"
-                            className="w-full px-4 py-3 sm:py-3.5 bg-gray-50 rounded-xl border-2 border-gray-900 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20 focus-visible:border-green-600 transition-all pr-20 font-medium"
+                            className="w-full px-4 py-3 sm:py-3.5 bg-gray-50 rounded-xl border-2 border-gray-900 text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20 focus-visible:border-green-600 transition-all pr-10 font-medium"
                         />
-                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex gap-0.5">
-                            <button className="p-1.5 text-gray-400 hover:text-green-600 transition-colors rounded-md hover:bg-green-50">
-                                <Paperclip size={16} />
-                            </button>
-                            <button className="p-1.5 text-gray-400 hover:text-green-600 transition-colors rounded-md hover:bg-green-50">
-                                <Smile size={16} />
-                            </button>
-                        </div>
                     </div>
-                    <button className="px-4 sm:px-5 py-3 sm:py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-base font-bold transition-all flex items-center gap-2 active:scale-[0.97] border-2 border-green-600 hover:border-green-700 shadow-[3px_3px_0px_#111827]">
+                    <button
+                        onClick={onSend}
+                        className="px-4 sm:px-5 py-3 sm:py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-base font-bold transition-all flex items-center gap-2 active:scale-[0.97] border-2 border-green-600 hover:border-green-700 shadow-[3px_3px_0px_#111827]"
+                    >
                         <Send size={16} />
                         <span className="hidden sm:inline">Send</span>
                     </button>
@@ -783,40 +588,29 @@ function DiscussionTab({
 /* ═══════════════════════════════════
    COURSE INTEL TAB
 ═══════════════════════════════════ */
-function CourseIntelTab({ course }: { course: Course }) {
+function CourseIntelTab({ course, roomId }: { course: CourseWithDepartment | null; roomId: number }) {
+    const { messages: roomMessages } = useMessages(roomId);
+    const [reviews, setReviews] = useState<{ rating: number; comment: string | null }[]>([]);
+
+    useEffect(() => {
+        fetchReviewsAction().then(setReviews);
+    }, []);
+
     const metrics = [
         {
-            icon: AlertCircle,
-            value: `${course.difficulty}/5`,
-            label: "Difficulty",
-            sub: "Alumni reviews",
-            color: "bg-red-50",
-            iconColor: "text-red-500",
-            borderColor: "border-red-300",
-        },
-        {
-            icon: Clock,
-            value: `~${course.timeCommitment}h`,
-            label: "Hours/Week",
-            sub: "Avg. commitment",
-            color: "bg-blue-50",
-            iconColor: "text-blue-500",
-            borderColor: "border-blue-300",
-        },
-        {
-            icon: TrendingUp,
-            value: course.avgGrade,
-            label: "Avg. Grade",
-            sub: "Class average",
-            color: "bg-green-50",
-            iconColor: "text-green-600",
-            borderColor: "border-green-600",
+            icon: MessageSquare,
+            value: roomMessages.length.toString(),
+            label: "Posts",
+            sub: "Room discussions",
+            color: "bg-purple-50",
+            iconColor: "text-purple-600",
+            borderColor: "border-purple-300",
         },
         {
             icon: Star,
-            value: `${course.popularity}%`,
-            label: "Satisfaction",
-            sub: "Would recommend",
+            value: reviews.length.toString(),
+            label: "Reviews",
+            sub: "From students",
             color: "bg-yellow-50",
             iconColor: "text-yellow-600",
             borderColor: "border-yellow-400",
@@ -830,10 +624,7 @@ function CourseIntelTab({ course }: { course: Course }) {
                     📊 Course Intel
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                    Real data from{" "}
-                    <span className="text-green-600">
-                        {course.alumni} students
-                    </span>
+                    Course <span className="text-green-600">insights</span>
                 </h2>
             </div>
 
@@ -873,37 +664,35 @@ function CourseIntelTab({ course }: { course: Course }) {
                 })}
             </div>
 
-            {/* Alumni tips */}
-            <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.4 }}
-                className="mt-4 sm:mt-6 p-5 sm:p-7 rounded-xl bg-white border-2 border-gray-900 shadow-[4px_4px_0px_#16a34a]"
-            >
-                <h3 className="font-black text-gray-900 text-base sm:text-lg mb-5 flex items-center gap-2">
-                    💡 What alumni say
-                </h3>
-                <div className="space-y-3 sm:space-y-4">
-                    {[
-                        "Start assignments early — the workload builds up fast",
-                        "Prof's office hours are incredibly helpful, go every week",
-                        "Form study groups by week 2, it makes a huge difference",
-                    ].map((tip, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, x: -12 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.5 + i * 0.1 }}
-                            className="flex items-start gap-3 text-sm sm:text-base text-gray-600 font-medium p-3 sm:p-4 bg-green-50 rounded-lg border-2 border-green-600/30"
-                        >
-                            <span className="w-6 h-6 bg-green-600 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <Zap size={12} className="text-white" />
-                            </span>
-                            {tip}
-                        </motion.div>
-                    ))}
-                </div>
-            </motion.div>
+            {/* Reviews */}
+            {reviews.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.4 }}
+                    className="mt-4 sm:mt-6 p-5 sm:p-7 rounded-xl bg-white border-2 border-gray-900 shadow-[4px_4px_0px_#16a34a]"
+                >
+                    <h3 className="font-black text-gray-900 text-base sm:text-lg mb-5 flex items-center gap-2">
+                        💡 What people say
+                    </h3>
+                    <div className="space-y-3 sm:space-y-4">
+                        {reviews.filter((r) => r.comment).slice(0, 5).map((r, i) => (
+                            <motion.div
+                                key={i}
+                                initial={{ opacity: 0, x: -12 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.5 + i * 0.1 }}
+                                className="flex items-start gap-3 text-sm sm:text-base text-gray-600 font-medium p-3 sm:p-4 bg-green-50 rounded-lg border-2 border-green-600/30"
+                            >
+                                <span className="w-6 h-6 bg-green-600 rounded-md flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-black text-white">
+                                    {r.rating}★
+                                </span>
+                                {r.comment}
+                            </motion.div>
+                        ))}
+                    </div>
+                </motion.div>
+            )}
 
             {/* Grade distribution placeholder */}
             <motion.div
@@ -964,7 +753,7 @@ function CourseIntelTab({ course }: { course: Course }) {
 /* ═══════════════════════════════════
    MENTORSHIP TAB
 ═══════════════════════════════════ */
-function MentorshipTab({ course }: { course: Course }) {
+function MentorshipTab() {
     const mentors = [
         {
             name: "Dr. Mike R.",
@@ -1090,116 +879,170 @@ function MentorshipTab({ course }: { course: Course }) {
 /* ═══════════════════════════════════
    RESOURCES TAB
 ═══════════════════════════════════ */
-function ResourcesTab() {
-    const resources = [
-        {
-            name: "Midterm Study Guide",
-            type: "PDF",
-            uploader: "Sarah C.",
-            rating: 4.8,
-            downloads: 234,
-            emoji: "📄",
-        },
-        {
-            name: "Lecture Notes — Week 1-6",
-            type: "Notion",
-            uploader: "Alex K.",
-            rating: 4.6,
-            downloads: 189,
-            emoji: "📝",
-        },
-        {
-            name: "Practice Problems Set",
-            type: "PDF",
-            uploader: "Dr. Mike R.",
-            rating: 4.9,
-            downloads: 312,
-            emoji: "🧮",
-        },
-        {
-            name: "Video Walkthrough: Ch.3",
-            type: "Video",
-            uploader: "Emma W.",
-            rating: 4.5,
-            downloads: 98,
-            emoji: "🎥",
-        },
-    ];
+function ResourcesTab({ roomId, currentUserId }: { roomId: number; currentUserId: string | null }) {
+    const { resources, uploading, uploadError, postLink, uploadFile } = useResources(roomId);
+    const [linkInput, setLinkInput] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handlePostLink = () => {
+        if (!linkInput.trim()) return;
+        postLink(linkInput.trim(), currentUserId);
+        setLinkInput("");
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!isValidFile(file)) {
+            alert("Unsupported file type. Accepted: PDF, TXT, JSON, DOC, DOCX, MD");
+            return;
+        }
+        uploadFile(file, currentUserId);
+        e.target.value = "";
+    };
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
-                <div>
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-xs font-black text-gray-900 uppercase tracking-widest mb-4 shadow-[2px_2px_0px_#16a34a]">
-                        📁 Resources
-                    </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                        Community-uploaded materials
-                    </h2>
+            <div className="mb-6 sm:mb-8">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border-2 border-gray-900 rounded-full text-xs font-black text-gray-900 uppercase tracking-widest mb-4 shadow-[2px_2px_0px_#16a34a]">
+                    📁 Resources
                 </div>
-                <button className="px-5 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-bold rounded-lg border-2 border-green-600 hover:border-green-700 transition-all flex items-center gap-2 shadow-[3px_3px_0px_#111827] active:scale-[0.97] self-start">
-                    <Plus size={16} />
-                    Upload
-                </button>
+                <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+                    Community-shared materials
+                </h2>
             </div>
 
-            <div className="space-y-3">
-                {resources.map((r, i) => (
-                    <motion.div
-                        key={i}
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.08, duration: 0.35 }}
-                        className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-xl bg-white border-2 border-gray-900 hover:shadow-[4px_4px_0px_#16a34a] hover:-translate-x-[1px] hover:-translate-y-[1px] transition-all duration-200 group cursor-pointer"
+            {/* Composer */}
+            <div className="mb-6 bg-white border-2 border-gray-900 rounded-xl p-4 shadow-[4px_4px_0px_#16a34a] space-y-3">
+                {/* Link input */}
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Link2 size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="url"
+                            value={linkInput}
+                            onChange={(e) => setLinkInput(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handlePostLink()}
+                            placeholder="Paste a link (Notion, YouTube, GitHub…)"
+                            className="w-full pl-9 pr-4 py-2.5 bg-gray-50 rounded-lg border-2 border-gray-200 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 transition-all font-medium"
+                        />
+                    </div>
+                    <button
+                        onClick={handlePostLink}
+                        disabled={!isUrl(linkInput)}
+                        className="px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg border-2 border-green-600 hover:border-green-700 transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#111827] active:scale-[0.97]"
                     >
-                        <div className="w-11 h-11 sm:w-12 sm:h-12 bg-green-50 border-2 border-green-600/30 rounded-lg flex items-center justify-center text-xl flex-shrink-0">
-                            {r.emoji}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-black text-gray-900 text-sm sm:text-base truncate">
-                                {r.name}
-                            </p>
-                            <p className="text-xs sm:text-sm text-gray-400 font-bold mt-0.5">
-                                {r.type} &middot; by {r.uploader} &middot; ⭐{" "}
-                                {r.rating}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                            <span className="text-xs text-gray-300 font-black tabular-nums hidden sm:inline">
-                                {r.downloads} ↓
-                            </span>
-                            <button className="p-2 sm:p-2.5 text-gray-300 hover:text-white hover:bg-green-600 rounded-lg border-2 border-transparent hover:border-green-600 transition-all opacity-0 group-hover:opacity-100">
-                                <Download size={16} />
-                            </button>
-                        </div>
-                    </motion.div>
-                ))}
+                        <ArrowUpRight size={15} />
+                        Share
+                    </button>
+                </div>
+
+                {/* Divider */}
+                <div className="flex items-center gap-3">
+                    <div className="flex-1 border-t-2 border-dashed border-gray-200" />
+                    <span className="text-xs font-black text-gray-400 uppercase tracking-widest">or</span>
+                    <div className="flex-1 border-t-2 border-dashed border-gray-200" />
+                </div>
+
+                {/* File upload */}
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept={ACCEPTED_FILE_TYPES}
+                    onChange={handleFileChange}
+                    className="hidden"
+                />
+                <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploading}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 bg-gray-50 hover:bg-green-50 border-2 border-dashed border-gray-300 hover:border-green-600 rounded-lg text-sm font-bold text-gray-500 hover:text-green-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {uploading ? (
+                        <><Loader2 size={15} className="animate-spin" /> Uploading…</>
+                    ) : (
+                        <><Paperclip size={15} /> Upload file <span className="text-gray-400 font-medium">(PDF, TXT, JSON, DOC, MD)</span></>
+                    )}
+                </button>
+                {uploadError && (
+                    <p className="text-xs text-red-600 font-bold bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        ⚠ {uploadError}
+                    </p>
+                )}
             </div>
 
-            {/* Tip card */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="mt-4 sm:mt-6 p-5 sm:p-6 rounded-xl bg-gray-900 border-2 border-gray-900 text-white relative overflow-hidden"
-            >
-                <GridPattern className="text-white/[0.04]" />
-                <div className="relative flex items-start gap-3">
-                    <div className="w-10 h-10 bg-green-600 rounded-lg border-2 border-green-500 flex items-center justify-center flex-shrink-0">
-                        <Sparkles size={18} className="text-white" />
+            {/* List */}
+            {resources.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                    <div className="w-14 h-14 bg-green-50 border-2 border-gray-900 rounded-xl flex items-center justify-center mb-4 shadow-[3px_3px_0px_#16a34a]">
+                        <FileText size={22} className="text-green-600" />
                     </div>
-                    <div>
-                        <h4 className="font-black text-base mb-1">
-                            Pro tip
-                        </h4>
-                        <p className="text-white/60 text-sm font-medium leading-relaxed">
-                            Upload your own notes and study guides to help
-                            future students. Top contributors get highlighted in
-                            the community.
-                        </p>
-                    </div>
+                    <p className="text-base font-black text-gray-900 mb-1">No resources yet</p>
+                    <p className="text-sm text-gray-400 font-medium">Share a link or upload a file above.</p>
                 </div>
-            </motion.div>
+            ) : (
+                <div className="space-y-3">
+                    {resources.map((r, i) => {
+                        const isOwn = r.author_id === currentUserId;
+                        const timestamp = new Date(r.created_at ?? "").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                        const isFile = !!r.attachment;
+                        const isLink = !isFile && isUrl(r.text);
+
+                        return (
+                            <motion.div
+                                key={r.id}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: Math.min(i * 0.05, 0.3), duration: 0.35 }}
+                                className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 rounded-xl bg-white border-2 border-gray-900 hover:shadow-[4px_4px_0px_#16a34a] hover:-translate-x-[1px] hover:-translate-y-[1px] transition-all duration-200 group"
+                            >
+                                {/* Icon */}
+                                <div className="w-11 h-11 sm:w-12 sm:h-12 bg-green-50 border-2 border-green-600/30 rounded-lg flex items-center justify-center text-xl flex-shrink-0">
+                                    {isFile ? getFileEmoji(r.attachment!.mime_type, r.text) : isLink ? "🔗" : "📝"}
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                    {isLink ? (
+                                        <a
+                                            href={r.text}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="font-black text-green-700 hover:text-green-900 text-sm sm:text-base truncate block underline underline-offset-2 decoration-green-600/40"
+                                        >
+                                            {r.text}
+                                        </a>
+                                    ) : (
+                                        <p className="font-black text-gray-900 text-sm sm:text-base truncate">
+                                            {r.text}
+                                        </p>
+                                    )}
+                                    <p className="text-xs text-gray-400 font-bold mt-0.5 flex items-center gap-1.5">
+                                        <span>{isOwn ? "You" : "Member"}</span>
+                                        <span>·</span>
+                                        <span>{timestamp}</span>
+                                        {isFile && r.attachment?.size && (
+                                            <><span>·</span><span>{formatBytes(r.attachment.size)}</span></>
+                                        )}
+                                    </p>
+                                </div>
+
+                                {/* Download button for files */}
+                                {isFile && (
+                                    <a
+                                        href={r.attachment!.url}
+                                        download={r.text}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-2 sm:p-2.5 text-gray-400 hover:text-white hover:bg-green-600 rounded-lg border-2 border-transparent hover:border-green-600 transition-all opacity-0 group-hover:opacity-100 flex-shrink-0"
+                                    >
+                                        <Download size={16} />
+                                    </a>
+                                )}
+                            </motion.div>
+                        );
+                    })}
+                </div>
+            )}
         </div>
     );
 }
@@ -1322,130 +1165,6 @@ function SessionsTab() {
                     </button>
                 </div>
             </motion.div>
-        </div>
-    );
-}
-
-function ChatSidebar({
-                         chatMessages,
-                         chatMessage,
-                         setChatMessage,
-                         handleSendChat,
-                         chatEndRef,
-                         onClose,
-                     }: {
-    chatMessages: {
-        id: number;
-        user: string;
-        message: string;
-        timestamp: string;
-    }[];
-    chatMessage: string;
-    setChatMessage: (v: string) => void;
-    handleSendChat: () => void;
-    chatEndRef: React.RefObject<HTMLDivElement | null>;
-    onClose: () => void;
-}) {
-    return (
-        <div className="w-full h-full border-l-[3px] border-gray-900 flex flex-col bg-white relative">
-            {/* Header */}
-            <div className="px-4 sm:px-5 py-4 border-b-2 border-dashed border-gray-200">
-                <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-black text-gray-900 text-base flex items-center gap-2">
-                        <div className="w-7 h-7 bg-green-600 rounded-md border-2 border-green-700 flex items-center justify-center">
-                            <Zap size={12} className="text-white" />
-                        </div>
-                        Live Chat
-                    </h3>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg border-2 border-transparent hover:border-gray-900 transition-all"
-                    >
-                        <X size={14} strokeWidth={2.5} />
-                    </button>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex -space-x-1.5">
-                        {onlineUsers.map((u) => (
-                            <div
-                                key={u.id}
-                                className="relative w-7 h-7 bg-gray-100 border-2 border-white rounded-lg flex items-center justify-center text-[9px] font-black text-gray-500"
-                            >
-                                {u.initials}
-                                <span
-                                    className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                                        u.status === "online"
-                                            ? "bg-green-500"
-                                            : "bg-yellow-500"
-                                    }`}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                    <span className="text-xs text-gray-400 font-bold">
-                        {
-                            onlineUsers.filter((u) => u.status === "online")
-                                .length
-                        }{" "}
-                        online
-                    </span>
-                </div>
-            </div>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 relative">
-                <DotGrid className="opacity-[0.04]" />
-                {chatMessages.map((msg, i) => (
-                    <motion.div
-                        key={msg.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: i * 0.05, duration: 0.3 }}
-                        className={`relative flex flex-col ${
-                            msg.user === "You" ? "items-end" : "items-start"
-                        }`}
-                    >
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-black text-gray-400">
-                                {msg.user}
-                            </span>
-                            <span className="text-[9px] text-gray-300 font-bold">
-                                {msg.timestamp}
-                            </span>
-                        </div>
-                        <div
-                            className={`px-3.5 py-2.5 rounded-xl text-sm max-w-[85%] font-medium border-2 ${
-                                msg.user === "You"
-                                    ? "bg-green-600 text-white border-green-700 rounded-tr-sm"
-                                    : "bg-white text-gray-900 border-gray-900 rounded-tl-sm shadow-[2px_2px_0px_#16a34a]"
-                            }`}
-                        >
-                            {msg.message}
-                        </div>
-                    </motion.div>
-                ))}
-                <div ref={chatEndRef} />
-            </div>
-
-            {/* Input */}
-            <div className="p-4 border-t-[3px] border-gray-900">
-                <div className="flex items-center gap-2">
-                    <input
-                        type="text"
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleSendChat()}
-                        placeholder="Type a message…"
-                        className="flex-1 px-3.5 py-3 bg-gray-50 rounded-lg border-2 border-gray-900 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20 focus-visible:border-green-600 transition-all font-medium"
-                    />
-                    <button
-                        onClick={handleSendChat}
-                        className="p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors active:scale-[0.95] border-2 border-green-600 hover:border-green-700 shadow-[2px_2px_0px_#111827]"
-                    >
-                        <Send size={16} />
-                    </button>
-                </div>
-            </div>
         </div>
     );
 }

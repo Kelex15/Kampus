@@ -61,7 +61,7 @@ export default function Navbar() {
     const [authed, setAuthed] = useState(false);
     const [initials, setInitials] = useState("K");
 
-    const { user, profile, signOut } = useAuth();
+    const { user, profile, loading, signOut } = useAuth();
 
     useEffect(() => {
         setAuthed(!!user);
@@ -148,7 +148,9 @@ export default function Navbar() {
                         aria-hidden
                     />
 
-                    {authed ? (
+                    {loading ? (
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 bg-gray-100 rounded-lg border-2 border-gray-200 animate-pulse" />
+                    ) : authed ? (
                         <Link
                             href="/profile"
                             className="w-9 h-9 sm:w-10 sm:h-10 bg-green-600 rounded-lg border-2 border-gray-900 flex items-center justify-center hover:shadow-[3px_3px_0px_#111827] hover:-translate-x-[1px] hover:-translate-y-[1px] active:shadow-none active:translate-x-0 active:translate-y-0 transition-all duration-200 ml-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20"
@@ -233,10 +235,10 @@ export default function Navbar() {
                                 })}
 
                                 <div className="pt-4 mt-4 border-t-2 border-dashed border-gray-200">
-                                    {authed ? (
+                                    {!loading && authed ? (
                                         <button
-                                            onClick={() => {
-                                                signOut();
+                                            onClick={async () => {
+                                                await signOut();
                                                 setMobileOpen(false);
                                                 window.location.href = "/";
                                             }}

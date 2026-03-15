@@ -3,20 +3,19 @@
 import { useState, useMemo, useEffect } from "react";
 import {
     Search,
-    TrendingUp,
     Users,
-    Star,
     SlidersHorizontal,
     ArrowUpRight,
     X,
-    Zap,
     BookOpen,
     GraduationCap,
+    Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { allCourses } from "@/lib/data";
+import { fetchCourses } from "./actions";
+import type { CourseWithDepartment } from "@/queries/schools";
 import PageShell from "@/components/shared/PageShell";
 
 /* ─── Decorative SVG doodles ─── */
@@ -148,79 +147,56 @@ function DotGrid({ className }: { className?: string }) {
 
 export default function DashboardPage() {
     const [departmentFilter, setDepartmentFilter] = useState("all");
-    const [yearFilter, setYearFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
-    const [sortBy, setSortBy] = useState("popularity");
     const [showFilters, setShowFilters] = useState(false);
+    const [courses, setCourses] = useState<CourseWithDepartment[]>([]);
+    const [coursesLoading, setCoursesLoading] = useState(true);
+    const [coursesError, setCoursesError] = useState(false);
 
-    const { profile } = useAuth();
+    const { profile, loading: authLoading } = useAuth();
     const greeting = profile?.username || (profile?.first_name as string | null | undefined) || "there";
+    const schoolName = courses.find((c) => c.school_name)?.school_name ?? null;
+
+    // Wait for auth to resolve so we have profile.school_id before fetching.
+    useEffect(() => {
+        if (authLoading) return;
+        setCoursesLoading(true);
+        fetchCourses(profile?.school_id)
+            .then((data) => setCourses(data))
+            .catch(() => setCoursesError(true))
+            .finally(() => setCoursesLoading(false));
+    }, [authLoading, profile?.school_id]);
 
     const departments = useMemo(() => {
-        const deps = new Set(allCourses.map((c) => c.department));
+        const deps = new Set(courses.map((c) => c.department_name).filter(Boolean) as string[]);
         return Array.from(deps).sort();
-    }, []);
+    }, [courses]);
 
     const filtered = useMemo(() => {
-        let courses = [...allCourses];
+        let result = [...courses];
 
         if (searchQuery) {
             const q = searchQuery.toLowerCase();
-            courses = courses.filter(
+            result = result.filter(
                 (c) =>
                     c.name.toLowerCase().includes(q) ||
-                    c.code.toLowerCase().includes(q) ||
-                    c.professor.toLowerCase().includes(q)
+                    c.course_code.toLowerCase().includes(q)
             );
         }
 
         if (departmentFilter !== "all") {
-            courses = courses.filter(
-                (c) =>
-                    c.department.toLowerCase() ===
-                    departmentFilter.toLowerCase()
+            result = result.filter(
+                (c) => c.department_name?.toLowerCase() === departmentFilter.toLowerCase()
             );
         }
 
-        if (yearFilter !== "all") {
-            courses = courses.filter(
-                (c) => c.year === parseInt(yearFilter, 10)
-            );
-        }
+        return result;
+    }, [searchQuery, departmentFilter, courses]);
 
-        return courses.sort((a, b) => {
-            switch (sortBy) {
-                case "popularity":
-                    return b.popularity - a.popularity;
-                case "difficulty":
-                    return a.difficulty - b.difficulty;
-                case "students":
-                    return b.currentStudents - a.currentStudents;
-                default:
-                    return 0;
-            }
-        });
-    }, [searchQuery, departmentFilter, yearFilter, sortBy]);
-
-    const activeFilterCount =
-        (departmentFilter !== "all" ? 1 : 0) +
-        (yearFilter !== "all" ? 1 : 0) +
-        (sortBy !== "popularity" ? 1 : 0);
-
-    const totalStudents = allCourses.reduce(
-        (acc, c) => acc + c.currentStudents,
-        0
-    );
-
-    const avgPopularity = Math.round(
-        allCourses.reduce((acc, c) => acc + c.popularity, 0) /
-        allCourses.length
-    );
+    const activeFilterCount = departmentFilter !== "all" ? 1 : 0;
 
     const resetAll = () => {
         setDepartmentFilter("all");
-        setYearFilter("all");
-        setSortBy("popularity");
         setSearchQuery("");
     };
 
@@ -276,17 +252,26 @@ export default function DashboardPage() {
                             </motion.div>
 
                             <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight text-gray-900 leading-[1.05]">
-                                Discover{" "}
-                                <span className="relative inline-block">
-                                    Courses
-                                    <HandDrawnUnderline className="absolute -bottom-1.5 sm:-bottom-2 left-0 w-full h-2.5 sm:h-3.5 text-green-600" />
-                                </span>
+                                {schoolName ? (
+                                    <>{schoolName.split(" ").slice(0, 2).join(" ")}{" "}
+                                    <span className="relative inline-block">
+                                        Courses
+                                        <HandDrawnUnderline className="absolute -bottom-1.5 sm:-bottom-2 left-0 w-full h-2.5 sm:h-3.5 text-green-600" />
+                                    </span></>
+                                ) : (
+                                    <>Discover{" "}
+                                    <span className="relative inline-block">
+                                        Courses
+                                        <HandDrawnUnderline className="absolute -bottom-1.5 sm:-bottom-2 left-0 w-full h-2.5 sm:h-3.5 text-green-600" />
+                                    </span></>
+                                )}
                             </h1>
 
                             <p className="text-base sm:text-lg lg:text-xl text-gray-600 mt-5 max-w-2xl font-medium leading-relaxed">
-                                Browse course rooms and join the ones that match
-                                your semester. Find your people, share notes,
-                                and ace it together.
+                                {schoolName
+                                    ? `Browse course rooms at ${schoolName}. Find your people, share notes, and ace it together.`
+                                    : "Browse course rooms and join the ones that match your semester. Find your people, share notes, and ace it together."
+                                }
                             </p>
                         </motion.div>
 
@@ -299,23 +284,13 @@ export default function DashboardPage() {
                             {[
                                 {
                                     icon: BookOpen,
-                                    value: allCourses.length,
+                                    value: coursesLoading ? "–" : courses.length,
                                     label: "Courses",
                                 },
                                 {
-                                    icon: Users,
-                                    value: totalStudents.toLocaleString(),
-                                    label: "Students",
-                                },
-                                {
                                     icon: GraduationCap,
-                                    value: departments.length,
+                                    value: coursesLoading ? "–" : departments.length,
                                     label: "Depts",
-                                },
-                                {
-                                    icon: Zap,
-                                    value: `${avgPopularity}%`,
-                                    label: "Avg pop.",
                                 },
                             ].map((stat) => (
                                 <div
@@ -356,7 +331,7 @@ export default function DashboardPage() {
                                 />
                                 <input
                                     type="text"
-                                    placeholder="Search courses, professors, codes…"
+                                    placeholder="Search courses or codes…"
                                     value={searchQuery}
                                     onChange={(e) =>
                                         setSearchQuery(e.target.value)
@@ -374,22 +349,24 @@ export default function DashboardPage() {
                                 )}
                             </div>
 
-                            <button
-                                onClick={() => setShowFilters(!showFilters)}
-                                className={filterBtnClass}
-                            >
-                                <SlidersHorizontal size={18} />
-                                Filters
-                                {activeFilterCount > 0 && (
-                                    <span className="w-6 h-6 rounded-full bg-green-600 text-white text-xs flex items-center justify-center font-black">
-                                        {activeFilterCount}
-                                    </span>
-                                )}
-                            </button>
+                            {departments.length > 0 && (
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={filterBtnClass}
+                                >
+                                    <SlidersHorizontal size={18} />
+                                    Filters
+                                    {activeFilterCount > 0 && (
+                                        <span className="w-6 h-6 rounded-full bg-green-600 text-white text-xs flex items-center justify-center font-black">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
+                                </button>
+                            )}
                         </motion.div>
 
                         <AnimatePresence>
-                            {showFilters && (
+                            {showFilters && departments.length > 0 && (
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: "auto" }}
@@ -408,9 +385,7 @@ export default function DashboardPage() {
                                             <select
                                                 value={departmentFilter}
                                                 onChange={(e) =>
-                                                    setDepartmentFilter(
-                                                        e.target.value
-                                                    )
+                                                    setDepartmentFilter(e.target.value)
                                                 }
                                                 className={selectClass}
                                             >
@@ -422,60 +397,6 @@ export default function DashboardPage() {
                                                         {d}
                                                     </option>
                                                 ))}
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                                Year
-                                            </label>
-                                            <select
-                                                value={yearFilter}
-                                                onChange={(e) =>
-                                                    setYearFilter(
-                                                        e.target.value
-                                                    )
-                                                }
-                                                className={selectClass}
-                                            >
-                                                <option value="all">
-                                                    All years
-                                                </option>
-                                                <option value="1">
-                                                    1st Year
-                                                </option>
-                                                <option value="2">
-                                                    2nd Year
-                                                </option>
-                                                <option value="3">
-                                                    3rd Year
-                                                </option>
-                                                <option value="4">
-                                                    4th Year
-                                                </option>
-                                            </select>
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-black text-gray-500 uppercase tracking-widest mb-2">
-                                                Sort by
-                                            </label>
-                                            <select
-                                                value={sortBy}
-                                                onChange={(e) =>
-                                                    setSortBy(e.target.value)
-                                                }
-                                                className={selectClass}
-                                            >
-                                                <option value="popularity">
-                                                    Most Popular
-                                                </option>
-                                                <option value="difficulty">
-                                                    Easiest First
-                                                </option>
-                                                <option value="students">
-                                                    Most Students
-                                                </option>
                                             </select>
                                         </div>
 
@@ -505,146 +426,129 @@ export default function DashboardPage() {
                     <DoodleCircle className="absolute bottom-20 right-12 w-10 h-10 text-green-600/10 hidden lg:block" />
 
                     <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
-                        <div className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
-                            <p className="text-sm sm:text-base font-black text-gray-400 uppercase tracking-widest">
-                                {filtered.length} course
-                                {filtered.length !== 1 ? "s" : ""} found
-                            </p>
+                        {coursesLoading ? (
+                            <div className="flex items-center justify-center py-24">
+                                <Loader2 size={32} className="animate-spin text-green-600" />
+                            </div>
+                        ) : coursesError ? (
+                            <div className="flex items-center justify-center py-24 text-center">
+                                <div>
+                                    <p className="text-gray-900 text-xl font-black mb-2">Failed to load courses</p>
+                                    <p className="text-gray-500 font-medium">Check your connection and try refreshing.</p>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
+                                    <p className="text-sm sm:text-base font-black text-gray-400 uppercase tracking-widest">
+                                        {filtered.length} course
+                                        {filtered.length !== 1 ? "s" : ""} found
+                                    </p>
 
-                            {departmentFilter !== "all" && (
-                                <button
-                                    onClick={() => setDepartmentFilter("all")}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border-2 border-green-600 rounded-lg text-sm font-bold text-green-700 hover:bg-green-100 transition-colors"
-                                >
-                                    {departmentFilter}
-                                    <X size={13} />
-                                </button>
-                            )}
-                            {yearFilter !== "all" && (
-                                <button
-                                    onClick={() => setYearFilter("all")}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border-2 border-green-600 rounded-lg text-sm font-bold text-green-700 hover:bg-green-100 transition-colors"
-                                >
-                                    Year {yearFilter}
-                                    <X size={13} />
-                                </button>
-                            )}
-                            {sortBy !== "popularity" && (
-                                <button
-                                    onClick={() => setSortBy("popularity")}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border-2 border-green-600 rounded-lg text-sm font-bold text-green-700 hover:bg-green-100 transition-colors"
-                                >
-                                    {sortBy === "difficulty"
-                                        ? "Easiest"
-                                        : "Most Students"}
-                                    <X size={13} />
-                                </button>
-                            )}
-                        </div>
+                                    {departmentFilter !== "all" && (
+                                        <button
+                                            onClick={() => setDepartmentFilter("all")}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 border-2 border-green-600 rounded-lg text-sm font-bold text-green-700 hover:bg-green-100 transition-colors"
+                                        >
+                                            {departmentFilter}
+                                            <X size={13} />
+                                        </button>
+                                    )}
+                                </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-                            {filtered.map((course, i) => (
-                                <motion.div
-                                    key={course.id}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{
-                                        delay: Math.min(i * 0.04, 0.4),
-                                        duration: 0.45,
-                                        ease: [0.25, 0.46, 0.45, 0.94],
-                                    }}
-                                >
-                                    <Link
-                                        href={`/rooms/${course.id}/chat`}
-                                        className="group relative block p-5 sm:p-6 rounded-xl border-2 border-gray-900 bg-white transition-all duration-200 hover:shadow-[5px_5px_0px_#16a34a] hover:-translate-x-[2px] hover:-translate-y-[2px] active:shadow-[2px_2px_0px_#16a34a] active:translate-x-0 active:translate-y-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/30"
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                                    {filtered.map((course, i) => (
+                                        <motion.div
+                                            key={course.id}
+                                            initial={{ opacity: 0, y: 20 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{
+                                                delay: Math.min(i * 0.04, 0.4),
+                                                duration: 0.45,
+                                                ease: [0.25, 0.46, 0.45, 0.94],
+                                            }}
+                                        >
+                                            <Link
+                                                href={`/rooms/${course.course_code}/chat`}
+                                                className="group relative block p-5 sm:p-6 rounded-xl border-2 border-gray-900 bg-white transition-all duration-200 hover:shadow-[5px_5px_0px_#16a34a] hover:-translate-x-[2px] hover:-translate-y-[2px] active:shadow-[2px_2px_0px_#16a34a] active:translate-x-0 active:translate-y-0 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/30"
+                                            >
+                                                <div className="flex items-center justify-between gap-3 mb-4">
+                                                    {course.department_name ? (
+                                                        <span className="px-3 py-1.5 text-xs font-black bg-gray-900 text-white rounded-lg uppercase tracking-wider">
+                                                            {course.department_name}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-3 py-1.5 text-xs font-black bg-gray-100 text-gray-500 rounded-lg uppercase tracking-wider">
+                                                            Course
+                                                        </span>
+                                                    )}
+                                                    <span className="text-sm sm:text-base text-gray-400 font-bold">
+                                                        {course.course_code}
+                                                    </span>
+                                                </div>
+
+                                                <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-2 tracking-tight leading-snug group-hover:text-green-700 transition-colors">
+                                                    {course.name}
+                                                </h3>
+
+                                                {course.description && (
+                                                    <p className="text-sm sm:text-base text-gray-500 mb-5 font-medium line-clamp-2">
+                                                        {course.description}
+                                                    </p>
+                                                )}
+
+                                                <div className="border-t-2 border-dashed border-gray-200 mt-4 pt-4 flex items-center justify-between">
+                                                    <span className="flex items-center gap-1.5 text-sm font-bold text-gray-400">
+                                                        <Users size={14} className="text-green-600" />
+                                                        Open room
+                                                    </span>
+                                                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-gray-900 flex items-center justify-center group-hover:bg-green-600 group-hover:border-green-600 transition-all">
+                                                        <ArrowUpRight
+                                                            size={16}
+                                                            className="text-gray-900 group-hover:text-white transition-colors"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                </div>
+
+                                {filtered.length === 0 && !coursesLoading && (
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="text-center py-20 sm:py-28"
                                     >
-                                        <div className="flex items-center justify-between gap-3 mb-4">
-                                            <span className="px-3 py-1.5 text-xs font-black bg-gray-900 text-white rounded-lg uppercase tracking-wider">
-                                                {course.department}
-                                            </span>
-                                            <span className="text-sm sm:text-base text-gray-400 font-bold">
-                                                Yr {course.year}
-                                            </span>
-                                        </div>
-
-                                        <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-2 tracking-tight leading-snug group-hover:text-green-700 transition-colors">
-                                            {course.name}
-                                        </h3>
-
-                                        <p className="text-sm sm:text-base text-gray-500 mb-5 font-medium">
-                                            {course.code} &middot; Prof.{" "}
-                                            {course.professor}
-                                        </p>
-
-                                        <div className="border-t-2 border-dashed border-gray-200 mb-4" />
-
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3 sm:gap-4 text-sm sm:text-base text-gray-400">
-                                                <span className="flex items-center gap-1.5 font-bold">
-                                                    <Users
-                                                        size={15}
-                                                        className="text-green-600"
-                                                    />
-                                                    {course.currentStudents}
-                                                </span>
-                                                <span className="flex items-center gap-1.5 font-bold">
-                                                    <Star
-                                                        size={15}
-                                                        className="text-green-600"
-                                                    />
-                                                    {course.difficulty}/5
-                                                </span>
-                                                <span className="flex items-center gap-1.5 font-bold">
-                                                    <TrendingUp
-                                                        size={15}
-                                                        className="text-green-600"
-                                                    />
-                                                    {course.popularity}%
-                                                </span>
-                                            </div>
-
-                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg border-2 border-gray-900 flex items-center justify-center group-hover:bg-green-600 group-hover:border-green-600 transition-all">
-                                                <ArrowUpRight
-                                                    size={16}
-                                                    className="text-gray-900 group-hover:text-white transition-colors"
+                                        <div className="relative inline-block mb-6">
+                                            <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-50 border-2 border-gray-900 rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_#16a34a]">
+                                                <Search
+                                                    size={32}
+                                                    className="text-gray-400"
                                                 />
                                             </div>
+                                            <DoodleStar className="absolute -top-3 -right-3 w-6 h-6 text-green-600/40 rotate-12" />
                                         </div>
-                                    </Link>
-                                </motion.div>
-                            ))}
-                        </div>
-
-                        {filtered.length === 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="text-center py-20 sm:py-28"
-                            >
-                                <div className="relative inline-block mb-6">
-                                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-green-50 border-2 border-gray-900 rounded-2xl flex items-center justify-center shadow-[4px_4px_0px_#16a34a]">
-                                        <Search
-                                            size={32}
-                                            className="text-gray-400"
-                                        />
-                                    </div>
-                                    <DoodleStar className="absolute -top-3 -right-3 w-6 h-6 text-green-600/40 rotate-12" />
-                                </div>
-                                <p className="text-gray-900 text-xl sm:text-2xl font-black mb-2">
-                                    No courses found
-                                </p>
-                                <p className="text-gray-500 text-base sm:text-lg font-medium mb-6 max-w-md mx-auto">
-                                    Try adjusting your search or filters to find
-                                    what you&apos;re looking for
-                                </p>
-                                <button
-                                    onClick={resetAll}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white text-base font-bold rounded-xl border-2 border-gray-900 hover:shadow-[4px_4px_0px_#16a34a] hover:-translate-x-[2px] hover:-translate-y-[2px] transition-all"
-                                >
-                                    Clear all filters
-                                    <X size={16} />
-                                </button>
-                            </motion.div>
+                                        <p className="text-gray-900 text-xl sm:text-2xl font-black mb-2">
+                                            {courses.length === 0 ? "No courses yet" : "No courses found"}
+                                        </p>
+                                        <p className="text-gray-500 text-base sm:text-lg font-medium mb-6 max-w-md mx-auto">
+                                            {courses.length === 0
+                                                ? "Courses added to Supabase will appear here."
+                                                : "Try adjusting your search or filters."}
+                                        </p>
+                                        {courses.length > 0 && (
+                                            <button
+                                                onClick={resetAll}
+                                                className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white text-base font-bold rounded-xl border-2 border-gray-900 hover:shadow-[4px_4px_0px_#16a34a] hover:-translate-x-[2px] hover:-translate-y-[2px] transition-all"
+                                            >
+                                                Clear all filters
+                                                <X size={16} />
+                                            </button>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </>
                         )}
                     </div>
                 </section>

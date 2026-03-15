@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import {
-  listProfessors,
-  listProfessorReviews,
+  fetchProfessorsAction,
+  fetchReviewsAction,
   type Professor,
-  type Review
-} from "@/queries/professors";
+  type Review,
+} from "@/app/(app)/professors/actions";
+
+export type { Professor, Review };
 
 export function useProfessors() {
   const [professors, setProfessors] = useState<Professor[]>([]);
@@ -16,26 +18,18 @@ export function useProfessors() {
   useEffect(() => {
     let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      try {
-        const [profs, revs] = await Promise.all([listProfessors(), listProfessorReviews()]);
-        if (!cancelled) {
-          setProfessors(profs);
-          setReviews(revs);
-        }
-      } finally {
+    Promise.all([fetchProfessorsAction(), fetchReviewsAction()])
+      .then(([profs, revs]) => {
+        if (cancelled) return;
+        setProfessors(profs);
+        setReviews(revs);
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    }
+      });
 
-    load();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  return { professors, reviews, loading };
+  return { professors, reviews, setReviews, loading };
 }
-
